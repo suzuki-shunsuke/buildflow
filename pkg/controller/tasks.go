@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -127,7 +128,13 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 	isFinished := true
 	if task.Config.Dependency != nil {
 		for _, dependOn := range task.Config.CompiledDependency.Names {
-			for _, dependency := range tasks.Get(dependOn) {
+			dependencies := tasks.Get(dependOn)
+			if len(dependencies) == 0 {
+				task.Result.Status = domain.TaskResultFailed
+				tasks.Set(idx, task)
+				return errors.New("invalid dependency. the task isn't found: " + dependOn)
+			}
+			for _, dependency := range dependencies {
 				if !dependency.Result.IsFinished() {
 					isFinished = false
 				}
@@ -135,6 +142,8 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 		}
 		b, err := task.Config.CompiledDependency.Program.Match(params)
 		if err != nil {
+			task.Result.Status = domain.TaskResultFailed
+			tasks.Set(idx, task)
 			return err
 		}
 		if !b {
@@ -149,6 +158,8 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	f, err := task.Config.When.Match(params)
 	if err != nil {
+		task.Result.Status = domain.TaskResultFailed
+		tasks.Set(idx, task)
 		return err
 	}
 	if !f {
