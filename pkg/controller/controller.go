@@ -24,6 +24,40 @@ type Params struct {
 	Item   config.Item
 }
 
+func (task Task) ToTemplate() interface{} {
+	return map[string]interface{}{
+		"name":            task.Config.Name.Text,
+		"status":          task.Result.Status,
+		"exit_code":       task.Result.Command.ExitCode,
+		"stdout":          task.Result.Command.Stdout,
+		"stderr":          task.Result.Command.Stderr,
+		"combined_output": task.Result.Command.CombinedOutput,
+		"file_text":       task.Result.File.Text,
+	}
+}
+
+func (params Params) ToTemplate() interface{} {
+	tasks := make([]interface{}, len(params.Tasks))
+	for i, task := range params.Tasks {
+		tasks[i] = task.ToTemplate()
+	}
+	return map[string]interface{}{
+		"pr":    params.PR,
+		"files": params.Files,
+		"util":  params.Util,
+		"task":  params.Task.ToTemplate(),
+		"tasks": tasks,
+		"item": map[string]interface{}{
+			"key":   params.Item.Key,
+			"value": params.Item.Value,
+		},
+	}
+}
+
+func (params Params) ToExpr() interface{} {
+	return params.ToTemplate()
+}
+
 func (ctrl Controller) newTasks(taskCfgs []config.Task) (Tasks, error) { //nolint:unparam
 	tasks := make([]Task, len(taskCfgs))
 	for i, taskCfg := range taskCfgs {
@@ -132,7 +166,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 		phase.Tasks = tasksCfg
 		ctrl.Config.Phases[i] = phase
 
-		if f, err := phase.Condition.Skip.Match(params); err != nil {
+		if f, err := phase.Condition.Skip.Match(params.ToExpr()); err != nil {
 			return err
 		} else if f {
 			// TODO update result
@@ -167,7 +201,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 			params.Phases[phase.Name] = tasks.Tasks
 		}
 
-		if f, err := phase.Condition.Exit.Match(params); err != nil {
+		if f, err := phase.Condition.Exit.Match(params.ToExpr()); err != nil {
 			return err
 		} else if f {
 			// TODO update result

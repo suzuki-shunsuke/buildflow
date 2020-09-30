@@ -141,7 +141,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 				}
 			}
 		}
-		b, err := task.Config.CompiledDependency.Program.Match(params)
+		b, err := task.Config.CompiledDependency.Program.Match(params.ToExpr())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			tasks.Set(idx, task)
@@ -157,7 +157,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	params.Task = task
 
-	f, err := task.Config.When.Match(params)
+	f, err := task.Config.When.Match(params.ToExpr())
 	if err != nil {
 		task.Result.Status = domain.TaskResultFailed
 		tasks.Set(idx, task)
@@ -174,7 +174,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	switch task.Config.Type {
 	case domain.TaskTypeCommand:
-		cmd, err := task.Config.Command.Command.New(params)
+		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			tasks.Set(idx, task)
@@ -191,7 +191,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 		task.Config.Command.Env.Compiled = m
 
 	case domain.TaskTypeFile:
-		p, err := task.Config.ReadFile.Path.New(params)
+		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			tasks.Set(idx, task)

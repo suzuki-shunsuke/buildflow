@@ -16,7 +16,7 @@ func expandSlice(task config.Task, value reflect.Value, params Params) ([]config
 			Key:   i,
 			Value: val,
 		}
-		name, err := task.Name.New(params)
+		name, err := task.Name.New(params.ToTemplate())
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func expandMap(task config.Task, value reflect.Value, params Params) ([]config.T
 			Value: val,
 		}
 
-		name, err := task.Name.New(params)
+		name, err := task.Name.New(params.ToTemplate())
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func expandItems(task config.Task, items interface{}, templateParams Params) ([]
 
 func Expand(task config.Task, params Params) ([]config.Task, error) {
 	if task.Items == nil {
-		name, err := task.Name.New(params)
+		name, err := task.Name.New(params.ToTemplate())
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func Expand(task config.Task, params Params) ([]config.Task, error) {
 		return []config.Task{t}, nil
 	}
 	if _, ok := task.Items.(string); ok {
-		items, err := task.CompiledItems.Program.Run(params)
+		items, err := task.CompiledItems.Program.Run(params.ToExpr())
 		if err != nil {
 			return nil, err
 		}

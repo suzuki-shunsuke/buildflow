@@ -5,11 +5,11 @@ import "github.com/suzuki-shunsuke/buildflow/pkg/config"
 func renderEnvs(envs config.Envs, params Params) ([]string, error) {
 	m := make([]string, len(envs.Vars))
 	for i, env := range envs.Vars {
-		k, err := env.Key.Render(params)
+		k, err := env.Key.Render(params.ToTemplate())
 		if err != nil {
 			return nil, err
 		}
-		v, err := env.Value.Render(params)
+		v, err := env.Value.Render(params.ToTemplate())
 		if err != nil {
 			return nil, err
 		}

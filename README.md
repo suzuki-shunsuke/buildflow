@@ -141,10 +141,10 @@ phases:
         echo foo
   - name: bar
     command:
-      command: |
-        {{- range .Tasks -}}
-          {{- if eq .Config.Name "foo" -}}
-            echo "{{ .Result.Command.Stdout }}"
+      command: >
+        {{- range .tasks -}}
+          {{- if eq .name "foo" -}}
+            echo "{{ .stdout }}"
           {{ end -}}
         {{- end -}}
     dependency:
@@ -200,7 +200,7 @@ phases:
       command: echo bar
     dependency:
     - foo
-    when: Tasks[0].Result.File.Text contains "bar"
+    when: tasks[0].file_text contains "dist"
 ```
 
 ### Refer to the pull request meta information in the configuration
@@ -243,7 +243,7 @@ On the CI service such as CircleCI and GitHub Actions, `buildflow` gets the abov
 In the following example, the task is run only when the pull request author is `octocat`.
 
 ```yaml
-    when: PR.owner == "octocat"
+    when: pr.owner == "octocat"
 ```
 
 ### Dynamic tasks
@@ -253,10 +253,10 @@ We can define tasks with a loop dynamically.
 ```yaml
 - name: build
   tasks:
-  - name: echo {{.Item.Value}}
+  - name: echo {{.item.key}}
     command:
       command: |
-        echo {{.Item.Value}}
+        echo {{.item.value}}
     items:
     - foo
     - bar
@@ -266,7 +266,7 @@ As the field `items`, we can use a list or a string which is an expression of [a
 
 ```yaml
     items: |
-      PR.labels
+      pr.labels
 ```
 
 ### Define multiple phases
@@ -363,7 +363,7 @@ phases:
       # environment variables
       # In the environment variable name and value text/template can be used
       env:
-        token: "{{ .Task.Config.Name.Text }}"
+        token: "{{ .task.name }}"
     # The condition whether the task is run.
     # The default is true.
     # The value should be true or false or a string which is an expression of antonmedv/expr.
@@ -409,55 +409,53 @@ phases:
 
 ### Configuration variables
 
-- PR: [Response body of GitHub API: Get a pull request](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-pull-request)
-- Files: [Response body of GitHub API: List pull requests files](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files)
-- Phases
-- Tasks
-- Task
-- Item
-  - Key
-  - Value
-- Util: utility functions
+- pr: [Response body of GitHub API: Get a pull request](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-pull-request)
+- files: [Response body of GitHub API: List pull requests files](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files)
+- phases
+- tasks
+- task
+- item
+  - key
+  - value
+- util: utility functions
 
 #### Example
 
 Express the variables as YAML.
 
 ```yaml
-PR:
+pr:
   url: https://api.github.com/repos/octocat/Hello-World/pulls/1347
   id: 1
   ...
-Files:
+files:
 - sha: bbcd538c8e72b8c175046e27cc8f907076331401
   filename: file1.txt
 ...
-Phases:
+phases:
   init: # phase name
-  - Result:
-      Status: succeeded # queue, failed, succeeded, running, skipped
-      Command:
-        ExitCode: 0
-        Stdout: hello # command's standard output
-        Stderr: "" # command's standard error output
-        CombinedOutput: hello # command output (Stdout + Stderr)
-      File:
-        Text: foo # The content of the file
-    Config:
-      Name:
-      Meta:
-        foo: foo
+  - name: foo
+    status: succeeded # queue, failed, succeeded, running, skipped
+    exit_code: 0
+    stdout: hello # command's standard output
+    stderr: "" # command's standard error output
+    combined_output: hello # command output (Stdout + Stderr)
+    meta:
+      foo: foo
+  - name: bar
+    status: succeeded
+    file_text: foo # The content of the file
   ...
-Tasks: # the tasks of the current phase
-- Name: init # the task name
+tasks: # the tasks of the current phase
+- name: init # the task name
 ...
-Task: # the current task
-  Name: init
+task: # the current task
+  name: init
   ...
-Item: # The item of the dynamic tasks.
-  Key: 0
-  Value: zoo
-Util:
+item: # The item of the dynamic tasks.
+  key: 0
+  value: zoo
+util:
   labelNames: func(PR.labels) []string: return a list of pull request label names
   env: https://golang.org/pkg/os/#Getenv
   string:
