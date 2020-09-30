@@ -92,7 +92,7 @@ func (task *Task) SetType() error {
 		task.Type = "command"
 		return nil
 	}
-	if task.ReadFile.Path != "" {
+	if task.ReadFile.Path.Text != "" {
 		task.Type = "file"
 		return nil
 	}
@@ -104,7 +104,7 @@ func (task *Task) SetType() error {
 }
 
 type ReadFile struct {
-	Path   string
+	Path   Template
 	Format string
 }
 

@@ -171,7 +171,8 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 	task.Result.Status = domain.TaskResultRunning
 	tasks.Set(idx, task)
 
-	if task.Config.Type == domain.TaskTypeCommand {
+	switch task.Config.Type {
+	case domain.TaskTypeCommand:
 		cmd, err := task.Config.Command.Command.New(params)
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
@@ -179,6 +180,14 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 			return err
 		}
 		task.Config.Command.Command = cmd
+	case domain.TaskTypeFile:
+		p, err := task.Config.ReadFile.Path.New(params)
+		if err != nil {
+			task.Result.Status = domain.TaskResultFailed
+			tasks.Set(idx, task)
+			return err
+		}
+		task.Config.ReadFile.Path = p
 	}
 
 	go func(idx int, task Task) {

@@ -49,7 +49,7 @@ func (task Task) Run(ctx context.Context) (domain.Result, error) {
 			},
 		}, err
 	case "file":
-		fileResult, err := task.FileReader.Read(task.Config.ReadFile.Path)
+		fileResult, err := task.FileReader.Read(task.Config.ReadFile.Path.Text)
 		return domain.Result{
 			File: fileResult,
 			Time: domain.Time{
