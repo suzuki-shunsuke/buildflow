@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -211,21 +212,32 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 
 func (tasks *Tasks) Run(ctx context.Context, params Params) error {
 	for i, task := range tasks.GetAll() {
-		err := tasks.RunTask(ctx, i, task, params)
-		if err != nil {
-			return err
+		if err := tasks.RunTask(ctx, i, task, params); err != nil {
+			fmt.Fprintln(tasks.Stderr, "task: "+task.Config.Name.Text, err)
 		}
 	}
 	allFinished := true
+	noRunning := true
+	queuedTasks := []string{}
 	for _, task := range tasks.GetAll() {
 		if !task.Result.IsFinished() {
 			allFinished = false
-			break
+			if task.Result.Status == domain.TaskResultRunning {
+				noRunning = false
+				break
+			}
+			if task.Result.Status == domain.TaskResultQueue {
+				queuedTasks = append(queuedTasks, task.Config.Name.Text)
+			}
 		}
 	}
 	if allFinished {
 		tasks.outputResult()
 		tasks.EventQueue.Close()
+		return nil
+	}
+	if noRunning {
+		return errors.New("the phase isn't finished but no task running. Plase check the task dependency is wrong. queued tasks: " + strings.Join(queuedTasks, ", "))
 	}
 	return nil
 }

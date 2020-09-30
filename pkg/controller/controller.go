@@ -157,8 +157,8 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 			fmt.Fprintln(tasks.Stderr, "= Phase: "+phase.Name+" =")
 			fmt.Fprintln(tasks.Stderr, "==============")
 			for range tasks.EventQueue.Queue {
-				err := tasks.Run(ctx, params)
-				if err != nil {
+				if err := tasks.Run(ctx, params); err != nil {
+					tasks.EventQueue.Close()
 					log.Println(err)
 				}
 				params.Phases[phase.Name] = tasks.Tasks
