@@ -6,10 +6,6 @@ import (
 	"github.com/suzuki-shunsuke/go-ci-env/cienv"
 )
 
-const (
-	taskTypeCommand = "command"
-)
-
 type Phase struct {
 	Name      string
 	Tasks     []Task
@@ -70,7 +66,7 @@ func setDefault(cfg Config) Config {
 		phase.Condition.Fail.SetDefaultBool(false)
 
 		for j, task := range phase.Tasks {
-			if task.Command.Command != "" {
+			if task.Command.Command.Text != "" {
 				task.Command = task.Command.SetDefault()
 			}
 			task.When.SetDefaultBool(true)

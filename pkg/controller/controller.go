@@ -33,8 +33,8 @@ func (ctrl Controller) newTasks(taskCfgs []config.Task) (Tasks, error) { //nolin
 				Status: "queue",
 			},
 			Executor:   ctrl.Executor,
-			Stdout:     execute.NewWriter(ctrl.Stdout, taskCfg.Name),
-			Stderr:     execute.NewWriter(ctrl.Stderr, taskCfg.Name),
+			Stdout:     execute.NewWriter(ctrl.Stdout, taskCfg.Name.Text),
+			Stderr:     execute.NewWriter(ctrl.Stderr, taskCfg.Name.Text),
 			Timer:      ctrl.Timer,
 			FileReader: ctrl.FileReader,
 		}

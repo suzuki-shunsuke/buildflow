@@ -22,6 +22,9 @@ func Compile(tpl string) (Template, error) {
 }
 
 func (tpl Template) Render(params interface{}) (string, error) {
+	if tpl.tpl == nil {
+		return "", nil
+	}
 	buf := &bytes.Buffer{}
 	if err := tpl.tpl.Execute(buf, params); err != nil {
 		return "", err

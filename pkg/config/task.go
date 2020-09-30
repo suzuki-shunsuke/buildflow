@@ -5,13 +5,11 @@ import (
 
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
-	"github.com/suzuki-shunsuke/buildflow/pkg/template"
 )
 
 type Task struct {
-	Name               string
-	NameTemplate       template.Template `yaml:"-"`
-	Type               string            `yaml:"-"`
+	Name               Template
+	Type               string `yaml:"-"`
 	When               Bool
 	Dependency         interface{}
 	CompiledDependency Dependency `yaml:"-"`
@@ -47,20 +45,6 @@ func (task *Task) Set() error {
 
 	if err := task.CompileDependency(); err != nil {
 		return err
-	}
-
-	nameTemplate, err := template.Compile(task.Name)
-	if err != nil {
-		return err
-	}
-	task.NameTemplate = nameTemplate
-
-	if task.Type == taskTypeCommand {
-		cmd, err := template.Compile(task.Command.Command)
-		if err != nil {
-			return err
-		}
-		task.Command.CompiledCommand = cmd
 	}
 
 	if s, ok := task.Items.(string); ok {
@@ -104,7 +88,7 @@ func (task *Task) CompileDependency() error {
 }
 
 func (task *Task) SetType() error {
-	if task.Command.Command != "" {
+	if task.Command.Command.Text != "" {
 		task.Type = "command"
 		return nil
 	}

@@ -1,14 +1,9 @@
 package config
 
-import (
-	"github.com/suzuki-shunsuke/buildflow/pkg/template"
-)
-
 type Command struct {
-	Shell           string
-	ShellOpts       []string `yaml:"shell_options"`
-	Command         string
-	CompiledCommand template.Template
+	Shell     string
+	ShellOpts []string `yaml:"shell_options"`
+	Command   Template
 }
 
 func (cmd Command) SetDefault() Command {

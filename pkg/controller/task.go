@@ -27,9 +27,9 @@ func (task Task) runCommand(ctx context.Context) (domain.CommandResult, error) {
 	}
 	result, err := task.Executor.Run(ctx, execute.Params{
 		Cmd:      task.Config.Command.Shell,
-		Args:     append(task.Config.Command.ShellOpts, task.Config.Command.Command),
+		Args:     append(task.Config.Command.ShellOpts, task.Config.Command.Command.Text),
 		Timeout:  task.Config.Timeout,
-		TaskName: task.Config.Name,
+		TaskName: task.Config.Name.Text,
 		Stdout:   task.Stdout,
 		Stderr:   task.Stderr,
 	})
@@ -58,5 +58,5 @@ func (task Task) Run(ctx context.Context) (domain.Result, error) {
 			},
 		}, err
 	}
-	return domain.Result{}, errors.New("invalid task type: " + task.Config.Type + ", task name: " + task.Config.Name)
+	return domain.Result{}, errors.New("invalid task type: " + task.Config.Type + ", task name: " + task.Config.Name.Text)
 }

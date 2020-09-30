@@ -83,7 +83,7 @@ func (tasks *Tasks) Get(name string) []Task {
 	arr := []Task{}
 	tasks.mutex.RLock()
 	for _, task := range tasks.Tasks {
-		if task.Config.Name == name {
+		if task.Config.Name.Text == name {
 			arr = append(arr, task)
 		}
 	}
@@ -107,7 +107,7 @@ func (tasks *Tasks) outputResult() {
 		fmt.Fprintln(tasks.Stderr, "No task is run")
 	}
 	for _, task := range runTasks {
-		fmt.Fprintln(tasks.Stderr, "task:", task.Config.Name)
+		fmt.Fprintln(tasks.Stderr, "task:", task.Config.Name.Text)
 		fmt.Fprintln(tasks.Stderr, "status:", task.Result.Status)
 		fmt.Fprintln(tasks.Stderr, "exit code:", task.Result.Command.ExitCode)
 		fmt.Fprintln(tasks.Stderr, "start time:", task.Result.Time.Start.In(utc).Format(time.RFC3339))
@@ -161,7 +161,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 	tasks.Set(idx, task)
 
 	if task.Config.Type == domain.TaskTypeCommand {
-		cmd, err := task.Config.Command.CompiledCommand.Render(params)
+		cmd, err := task.Config.Command.Command.New(params)
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			tasks.Set(idx, task)
