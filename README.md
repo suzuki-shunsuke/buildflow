@@ -412,6 +412,8 @@ phases:
 - pr: [Response body of GitHub API: Get a pull request](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-pull-request)
 - files: [Response body of GitHub API: List pull requests files](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files)
 - phases
+- phase
+  - name
 - tasks
 - task
 - item
@@ -434,17 +436,19 @@ files:
 ...
 phases:
   init: # phase name
-  - name: foo
-    status: succeeded # queue, failed, succeeded, running, skipped
-    exit_code: 0
-    stdout: hello # command's standard output
-    stderr: "" # command's standard error output
-    combined_output: hello # command output (Stdout + Stderr)
-    meta:
-      foo: foo
-  - name: bar
     status: succeeded
-    file_text: foo # The content of the file
+    tasks:
+    - name: foo
+      status: succeeded # queue, failed, succeeded, running, skipped
+      exit_code: 0
+      stdout: hello # command's standard output
+      stderr: "" # command's standard error output
+      combined_output: hello # command output (Stdout + Stderr)
+      meta:
+        foo: foo
+    - name: bar
+      status: succeeded
+      file_text: foo # The content of the file
   ...
 tasks: # the tasks of the current phase
 - name: init # the task name

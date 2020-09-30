@@ -15,16 +15,33 @@ import (
 )
 
 type Params struct {
-	PR     interface{}
-	Files  interface{}
-	Util   map[string]interface{}
-	Phases map[string][]Task
-	Tasks  []Task
-	Task   Task
-	Item   config.Item
+	PR        interface{}
+	Files     interface{}
+	Util      map[string]interface{}
+	Phases    map[string]ParamsPhase
+	Tasks     []Task
+	Task      Task
+	PhaseName string
+	Item      config.Item
 }
 
-func (task Task) ToTemplate() interface{} {
+type ParamsPhase struct {
+	Tasks  []Task
+	Status string
+}
+
+func (phase ParamsPhase) ToTemplate() map[string]interface{} {
+	tasks := make([]map[string]interface{}, len(phase.Tasks))
+	for i, task := range phase.Tasks {
+		tasks[i] = task.ToTemplate()
+	}
+	return map[string]interface{}{
+		"status": phase.Status,
+		"tasks":  tasks,
+	}
+}
+
+func (task Task) ToTemplate() map[string]interface{} {
 	return map[string]interface{}{
 		"name":            task.Config.Name.Text,
 		"status":          task.Result.Status,
@@ -37,15 +54,27 @@ func (task Task) ToTemplate() interface{} {
 }
 
 func (params Params) ToTemplate() interface{} {
-	tasks := make([]interface{}, len(params.Tasks))
+	tasks := make([]map[string]interface{}, len(params.Tasks))
 	for i, task := range params.Tasks {
 		tasks[i] = task.ToTemplate()
+	}
+	phases := make(map[string]interface{}, len(params.Phases))
+	for k, phase := range params.Phases {
+		phases[k] = phase.ToTemplate()
 	}
 	return map[string]interface{}{
 		"pr":    params.PR,
 		"files": params.Files,
 		"util":  params.Util,
 		"task":  params.Task.ToTemplate(),
+		// phases.<phase-name>.status
+		// phases.<phase-name>.tasks[index].name
+		// phases.<phase-name>.tasks[index].status
+		"phases": phases,
+		// phase.name
+		"phase": map[string]interface{}{
+			"name": params.PhaseName,
+		},
 		"tasks": tasks,
 		"item": map[string]interface{}{
 			"key":   params.Item.Key,
@@ -156,6 +185,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 	params.Util = expr.GetUtil()
 
 	for i, phaseCfg := range ctrl.Config.Phases {
+		params.PhaseName = phaseCfg.Name
 		tasksCfg := []config.Task{}
 		for _, task := range phaseCfg.Tasks {
 			tasks, err := Expand(task, params)
@@ -174,7 +204,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 			continue
 		}
 
-		params.Phases = map[string][]Task{}
+		params.Phases = map[string]ParamsPhase{}
 
 		if len(phaseCfg.Tasks) > 0 { //nolint:dupl
 			phase, err := ctrl.newPhase(phaseCfg)
@@ -186,7 +216,9 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 				<-ctx.Done()
 				phase.EventQueue.Close()
 			}()
-			params.Phases[phaseCfg.Name] = phase.Tasks
+			params.Phases[phaseCfg.Name] = ParamsPhase{
+				Tasks: phase.Tasks,
+			}
 			params.Tasks = phase.Tasks
 			fmt.Fprintln(phase.Stderr, "\n==============")
 			fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
@@ -196,10 +228,14 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 					phase.EventQueue.Close()
 					log.Println(err)
 				}
-				params.Phases[phaseCfg.Name] = phase.Tasks
+				params.Phases[phaseCfg.Name] = ParamsPhase{
+					Tasks: phase.Tasks,
+				}
 				params.Tasks = phase.Tasks
 			}
-			params.Phases[phaseCfg.Name] = phase.Tasks
+			params.Phases[phaseCfg.Name] = ParamsPhase{
+				Tasks: phase.Tasks,
+			}
 		}
 
 		if f, err := phaseCfg.Condition.Exit.Match(params.ToExpr()); err != nil {

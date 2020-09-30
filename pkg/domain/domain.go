@@ -22,6 +22,17 @@ type Result struct {
 	Error   error
 }
 
+type PhaseResult struct {
+	// succeeded
+	// failed
+	// skipped
+	Status string
+	Time   Time
+	Error  error
+	Output map[string]interface{}
+	Tasks  []Result
+}
+
 func (result Result) IsFinished() bool {
 	return !(result.Status == "running" || result.Status == "queue")
 }
