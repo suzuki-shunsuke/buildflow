@@ -10,11 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/suzuki-shunsuke/buildflow/pkg/config"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/locale"
 )
 
-type Tasks struct {
+type Phase struct {
+	Config     config.Phase
 	Tasks      []Task
 	mutex      sync.RWMutex
 	EventQueue EventQueue
@@ -68,58 +70,58 @@ func (queue *TaskQueue) pop() {
 	}
 }
 
-func (tasks *Tasks) Set(idx int, task Task) {
-	tasks.mutex.Lock()
-	tasks.Tasks[idx] = task
-	tasks.mutex.Unlock()
+func (phase *Phase) Set(idx int, task Task) {
+	phase.mutex.Lock()
+	phase.Tasks[idx] = task
+	phase.mutex.Unlock()
 }
 
-func (tasks *Tasks) GetAll() []Task {
-	tasks.mutex.RLock()
-	a := tasks.Tasks
-	tasks.mutex.RUnlock()
+func (phase *Phase) GetAll() []Task {
+	phase.mutex.RLock()
+	a := phase.Tasks
+	phase.mutex.RUnlock()
 	return a
 }
 
-func (tasks *Tasks) Get(name string) []Task {
+func (phase *Phase) Get(name string) []Task {
 	arr := []Task{}
-	tasks.mutex.RLock()
-	for _, task := range tasks.Tasks {
+	phase.mutex.RLock()
+	for _, task := range phase.Tasks {
 		if task.Config.Name.Text == name {
 			arr = append(arr, task)
 		}
 	}
-	tasks.mutex.RUnlock()
+	phase.mutex.RUnlock()
 	return arr
 }
 
-func (tasks *Tasks) outputResult() {
-	fmt.Fprintln(tasks.Stderr, "\n================")
-	fmt.Fprintln(tasks.Stderr, "= Phase Result =")
-	fmt.Fprintln(tasks.Stderr, "================")
+func (phase *Phase) outputResult() {
+	fmt.Fprintln(phase.Stderr, "\n================")
+	fmt.Fprintln(phase.Stderr, "= Phase Result =")
+	fmt.Fprintln(phase.Stderr, "================")
 	utc := locale.UTC()
 	runTasks := []Task{}
-	for _, task := range tasks.GetAll() {
+	for _, task := range phase.GetAll() {
 		if task.Result.Status == "skipped" {
 			continue
 		}
 		runTasks = append(runTasks, task)
 	}
 	if len(runTasks) == 0 {
-		fmt.Fprintln(tasks.Stderr, "No task is run")
+		fmt.Fprintln(phase.Stderr, "No task is run")
 	}
 	for _, task := range runTasks {
-		fmt.Fprintln(tasks.Stderr, "task:", task.Config.Name.Text)
-		fmt.Fprintln(tasks.Stderr, "status:", task.Result.Status)
-		fmt.Fprintln(tasks.Stderr, "exit code:", task.Result.Command.ExitCode)
-		fmt.Fprintln(tasks.Stderr, "start time:", task.Result.Time.Start.In(utc).Format(time.RFC3339))
-		fmt.Fprintln(tasks.Stderr, "end time:", task.Result.Time.End.In(utc).Format(time.RFC3339))
-		fmt.Fprintln(tasks.Stderr, "duration:", task.Result.Time.End.Sub(task.Result.Time.Start))
-		fmt.Fprintln(tasks.Stderr, task.Result.Command.CombinedOutput)
+		fmt.Fprintln(phase.Stderr, "task:", task.Config.Name.Text)
+		fmt.Fprintln(phase.Stderr, "status:", task.Result.Status)
+		fmt.Fprintln(phase.Stderr, "exit code:", task.Result.Command.ExitCode)
+		fmt.Fprintln(phase.Stderr, "start time:", task.Result.Time.Start.In(utc).Format(time.RFC3339))
+		fmt.Fprintln(phase.Stderr, "end time:", task.Result.Time.End.In(utc).Format(time.RFC3339))
+		fmt.Fprintln(phase.Stderr, "duration:", task.Result.Time.End.Sub(task.Result.Time.Start))
+		fmt.Fprintln(phase.Stderr, task.Result.Command.CombinedOutput)
 	}
 }
 
-func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Params) error { //nolint:funlen
+func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Params) error { //nolint:funlen
 	if task.Result.Status != domain.TaskResultQueue {
 		return nil
 	}
@@ -129,10 +131,10 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 	isFinished := true
 	if task.Config.Dependency != nil {
 		for _, dependOn := range task.Config.CompiledDependency.Names {
-			dependencies := tasks.Get(dependOn)
+			dependencies := phase.Get(dependOn)
 			if len(dependencies) == 0 {
 				task.Result.Status = domain.TaskResultFailed
-				tasks.Set(idx, task)
+				phase.Set(idx, task)
 				return errors.New("invalid dependency. the task isn't found: " + dependOn)
 			}
 			for _, dependency := range dependencies {
@@ -144,7 +146,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 		b, err := task.Config.CompiledDependency.Program.Match(params.ToExpr())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
-			tasks.Set(idx, task)
+			phase.Set(idx, task)
 			return err
 		}
 		if !b {
@@ -160,24 +162,24 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 	f, err := task.Config.When.Match(params.ToExpr())
 	if err != nil {
 		task.Result.Status = domain.TaskResultFailed
-		tasks.Set(idx, task)
+		phase.Set(idx, task)
 		return err
 	}
 	if !f {
 		task.Result.Status = domain.TaskResultSkipped
-		tasks.Set(idx, task)
+		phase.Set(idx, task)
 		return nil
 	}
 
 	task.Result.Status = domain.TaskResultRunning
-	tasks.Set(idx, task)
+	phase.Set(idx, task)
 
 	switch task.Config.Type {
 	case domain.TaskTypeCommand:
 		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
-			tasks.Set(idx, task)
+			phase.Set(idx, task)
 			return err
 		}
 		task.Config.Command.Command = cmd
@@ -185,7 +187,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 		m, err := renderEnvs(task.Config.Command.Env, params)
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
-			tasks.Set(idx, task)
+			phase.Set(idx, task)
 			return err
 		}
 		task.Config.Command.Env.Compiled = m
@@ -194,7 +196,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
-			tasks.Set(idx, task)
+			phase.Set(idx, task)
 			return err
 		}
 		task.Config.ReadFile.Path = p
@@ -202,12 +204,12 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	go func(idx int, task Task) {
 		defer func() {
-			tasks.Set(idx, task)
-			tasks.EventQueue.Push()
+			phase.Set(idx, task)
+			phase.EventQueue.Push()
 		}()
-		tasks.TaskQueue.push()
+		phase.TaskQueue.push()
 		result, err := task.Run(ctx)
-		tasks.TaskQueue.pop()
+		phase.TaskQueue.pop()
 		task.Result = result
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
@@ -219,16 +221,16 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 	return nil
 }
 
-func (tasks *Tasks) Run(ctx context.Context, params Params) error {
-	for i, task := range tasks.GetAll() {
-		if err := tasks.RunTask(ctx, i, task, params); err != nil {
-			fmt.Fprintln(tasks.Stderr, "task: "+task.Config.Name.Text, err)
+func (phase *Phase) Run(ctx context.Context, params Params) error {
+	for i, task := range phase.GetAll() {
+		if err := phase.RunTask(ctx, i, task, params); err != nil {
+			fmt.Fprintln(phase.Stderr, "task: "+task.Config.Name.Text, err)
 		}
 	}
 	allFinished := true
 	noRunning := true
 	queuedTasks := []string{}
-	for _, task := range tasks.GetAll() {
+	for _, task := range phase.GetAll() {
 		if !task.Result.IsFinished() {
 			allFinished = false
 			if task.Result.Status == domain.TaskResultRunning {
@@ -241,8 +243,8 @@ func (tasks *Tasks) Run(ctx context.Context, params Params) error {
 		}
 	}
 	if allFinished {
-		tasks.outputResult()
-		tasks.EventQueue.Close()
+		phase.outputResult()
+		phase.EventQueue.Close()
 		return nil
 	}
 	if noRunning {
