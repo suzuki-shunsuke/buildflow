@@ -181,6 +181,15 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 			return err
 		}
 		task.Config.Command.Command = cmd
+
+		m, err := renderEnvs(task.Config.Command.Env, params)
+		if err != nil {
+			task.Result.Status = domain.TaskResultFailed
+			tasks.Set(idx, task)
+			return err
+		}
+		task.Config.Command.Env.Compiled = m
+
 	case domain.TaskTypeFile:
 		p, err := task.Config.ReadFile.Path.New(params)
 		if err != nil {

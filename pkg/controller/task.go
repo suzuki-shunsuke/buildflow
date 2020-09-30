@@ -32,6 +32,7 @@ func (task Task) runCommand(ctx context.Context) (domain.CommandResult, error) {
 		TaskName: task.Config.Name.Text,
 		Stdout:   task.Stdout,
 		Stderr:   task.Stderr,
+		Envs:     task.Config.Command.Env.Compiled,
 	})
 	return result, err
 }
