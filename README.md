@@ -360,6 +360,10 @@ phases:
       shell_options:
       - -c
       command: echo hello
+      # environment variables
+      # In the environment variable name and value text/template can be used
+      env:
+        token: "{{ .Task.Config.Name.Text }}"
     # The condition whether the task is run.
     # The default is true.
     # The value should be true or false or a string which is an expression of antonmedv/expr.
@@ -439,18 +443,20 @@ Phases:
         CombinedOutput: hello # command output (Stdout + Stderr)
       File:
         Text: foo # The content of the file
-    config:
-      name:
+    Config:
+      Name:
+      Meta:
+        foo: foo
   ...
 Tasks: # the tasks of the current phase
-- name: init # the task name
+- Name: init # the task name
 ...
 Task: # the current task
-  name: init
+  Name: init
   ...
 Item: # The item of the dynamic tasks.
-  key: 0
-  value: zoo
+  Key: 0
+  Value: zoo
 Util:
   labelNames: func(PR.labels) []string: return a list of pull request label names
   env: https://golang.org/pkg/os/#Getenv
