@@ -132,7 +132,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 		phase.Tasks = tasksCfg
 		ctrl.Config.Phases[i] = phase
 
-		if f, err := phase.Condition.CompiledSkip.Match(params); err != nil {
+		if f, err := phase.Condition.Skip.Match(params); err != nil {
 			return err
 		} else if f {
 			// TODO update result
@@ -167,7 +167,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 			params.Phases[phase.Name] = tasks.Tasks
 		}
 
-		if f, err := phase.Condition.CompiledExit.Match(params); err != nil {
+		if f, err := phase.Condition.Exit.Match(params); err != nil {
 			return err
 		} else if f {
 			// TODO update result

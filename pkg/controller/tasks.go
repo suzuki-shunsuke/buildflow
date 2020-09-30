@@ -147,7 +147,7 @@ func (tasks *Tasks) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	params.Task = task
 
-	f, err := task.Config.WhenProgram.Match(params)
+	f, err := task.Config.When.Match(params)
 	if err != nil {
 		return err
 	}

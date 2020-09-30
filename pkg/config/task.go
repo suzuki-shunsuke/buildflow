@@ -12,8 +12,7 @@ type Task struct {
 	Name               string
 	NameTemplate       template.Template `yaml:"-"`
 	Type               string            `yaml:"-"`
-	When               string
-	WhenProgram        expr.BoolProgram
+	When               Bool
 	Dependency         interface{}
 	CompiledDependency Dependency `yaml:"-"`
 	Command            Command
@@ -55,12 +54,6 @@ func (task *Task) Set() error {
 		return err
 	}
 	task.NameTemplate = nameTemplate
-
-	whenProgram, err := expr.NewBool(task.When)
-	if err != nil {
-		return err
-	}
-	task.WhenProgram = whenProgram
 
 	if task.Type == taskTypeCommand {
 		cmd, err := template.Compile(task.Command.Command)

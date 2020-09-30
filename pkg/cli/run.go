@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
 	"github.com/suzuki-shunsuke/buildflow/pkg/controller"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
-	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 	"github.com/suzuki-shunsuke/buildflow/pkg/file"
 	"github.com/suzuki-shunsuke/buildflow/pkg/github"
 	"github.com/suzuki-shunsuke/go-findconfig/findconfig"
@@ -71,15 +69,10 @@ func (runner Runner) action(c *cli.Context) error {
 		"repo":      cfg.Repo,
 		"log_level": cfg.LogLevel,
 	}).Debug("config")
-	ex, err := expr.NewBool(cfg.When)
-	if err != nil {
-		return fmt.Errorf("it is failed to compile the expression. Please check the expression: %w", err)
-	}
 
 	ctrl := controller.Controller{
 		Config:     cfg,
 		GitHub:     ghClient,
-		Expr:       ex,
 		Executor:   execute.New(),
 		Stdout:     os.Stdout,
 		Stderr:     os.Stdout,

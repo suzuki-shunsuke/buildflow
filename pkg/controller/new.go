@@ -14,7 +14,6 @@ import (
 
 type Controller struct {
 	GitHub     GitHub
-	Expr       Expr
 	Config     config.Config
 	Executor   Executor
 	FileReader FileReader

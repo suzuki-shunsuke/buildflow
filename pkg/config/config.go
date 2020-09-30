@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 
-	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 	"github.com/suzuki-shunsuke/go-ci-env/cienv"
 )
 
@@ -18,19 +17,16 @@ type Phase struct {
 }
 
 type PhaseCondition struct {
-	Skip         string
-	Exit         string
-	Fail         string
-	CompiledSkip expr.BoolProgram `yaml:"-"`
-	CompiledExit expr.BoolProgram `yaml:"-"`
-	CompiledFail expr.BoolProgram `yaml:"-"`
+	Skip Bool
+	Exit Bool
+	Fail Bool
 }
 
 type Config struct {
 	Phases      []Phase
 	Owner       string
 	Repo        string
-	When        string
+	When        Bool
 	LogLevel    string `yaml:"log_level"`
 	GitHubToken string `yaml:"github_token"`
 	Env         Env    `yaml:"-"`
@@ -51,37 +47,9 @@ type Env struct {
 	CI           bool
 }
 
-const (
-	falseString = "false"
-)
-
 func Set(cfg Config) (Config, error) {
 	cfg = setDefault(setEnv(cfg))
 	for i, phase := range cfg.Phases {
-		if phase.Condition.Skip == "" {
-			phase.Condition.Skip = falseString
-		}
-		if phase.Condition.Exit == "" {
-			phase.Condition.Exit = falseString
-		}
-		if phase.Condition.Fail == "" {
-			phase.Condition.Fail = falseString
-		}
-		if e, err := expr.NewBool(phase.Condition.Skip); err != nil {
-			return cfg, err
-		} else { //nolint:golint
-			phase.Condition.CompiledSkip = e
-		}
-		if e, err := expr.NewBool(phase.Condition.Exit); err != nil {
-			return cfg, err
-		} else { //nolint:golint
-			phase.Condition.CompiledExit = e
-		}
-		if e, err := expr.NewBool(phase.Condition.Fail); err != nil {
-			return cfg, err
-		} else { //nolint:golint
-			phase.Condition.CompiledFail = e
-		}
 		for j, task := range phase.Tasks {
 			if err := task.Set(); err != nil {
 				return cfg, err
@@ -94,15 +62,18 @@ func Set(cfg Config) (Config, error) {
 }
 
 func setDefault(cfg Config) Config {
-	if cfg.When == "" {
-		cfg.When = "true"
-	}
+	cfg.When.SetDefaultBool(true)
 
 	for i, phase := range cfg.Phases {
+		phase.Condition.Skip.SetDefaultBool(false)
+		phase.Condition.Exit.SetDefaultBool(false)
+		phase.Condition.Fail.SetDefaultBool(false)
+
 		for j, task := range phase.Tasks {
 			if task.Command.Command != "" {
 				task.Command = task.Command.SetDefault()
 			}
+			task.When.SetDefaultBool(true)
 			phase.Tasks[j] = task
 		}
 		cfg.Phases[i] = phase
