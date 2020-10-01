@@ -17,6 +17,22 @@ func LabelNames(labels interface{}) []string {
 	return b
 }
 
+func listKeysOfMap(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func listValuesOfMap(m map[string]interface{}) []interface{} {
+	vals := make([]interface{}, 0, len(m))
+	for _, v := range m {
+		vals = append(vals, v)
+	}
+	return vals
+}
+
 func GetUtil() map[string]interface{} {
 	return map[string]interface{}{
 		"labelNames": LabelNames,
@@ -24,6 +40,10 @@ func GetUtil() map[string]interface{} {
 		"string": map[string]interface{}{
 			"split":     strings.Split,
 			"trimSpace": strings.TrimSpace,
+		},
+		"map": map[string]interface{}{
+			"keys":   listKeysOfMap,
+			"values": listValuesOfMap,
 		},
 	}
 }

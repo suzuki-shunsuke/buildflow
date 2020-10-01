@@ -341,6 +341,18 @@ repo: buildflow
 # The maximum number of tasks which are run in parallel.
 # The default is 0, which means there is no limitation.
 parallelism: 1
+# The build condition
+condtion:
+  # When the skip is true, the build is skipped.
+  # The value should be true or false or an expression of antonmedv/expr.
+  # If this is an expression, the evaluation result should be true or false.
+  # The default is false.
+  skip: false
+  # When the fail is true, the build fails, which means the exit code of `buildflow run` isn't 0.
+  # The value should be true or false or an expression of antonmedv/expr.
+  # If this is an expression, the evaluation result should be true or false.
+  # By default `fail` is false if any phases failed.
+  fail: false
 # The list of phases.
 # Phases are run not in parallel but sequentially.
 phases:
@@ -405,6 +417,12 @@ phases:
     # If this is an expression, the evaluation result should be true or false.
     # The default is false.
     exit: false
+    # `fail` is evaluated when the phase is finished.
+    # If the `fail` is true, the phase fails.
+    # The value should be true or false or an expression of antonmedv/expr.
+    # If this is an expression, the evaluation result should be true or false.
+    # By default `fail` is false if any tasks failed.
+    fail: false
 ```
 
 ### Configuration variables
@@ -465,6 +483,9 @@ util:
   string:
     split: https://golang.org/pkg/strings/#Split
     trimSpace: https://golang.org/pkg/strings/#TrimSpace
+  map:
+    keys: func(map[string]interface{}) []string: return a list of keys of a map
+    values: func(map[string]interface{}) []interface{}: return a list of values of a map
 ```
 
 ## Usage

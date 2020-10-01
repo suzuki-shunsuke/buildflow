@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 
+	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 	"github.com/suzuki-shunsuke/go-ci-env/cienv"
 )
 
@@ -18,11 +19,16 @@ type PhaseCondition struct {
 	Fail Bool
 }
 
+type BuildCondition struct {
+	Skip Bool
+	Fail Bool
+}
+
 type Config struct {
 	Phases      []Phase
 	Owner       string
 	Repo        string
-	When        Bool
+	Condition   BuildCondition
 	LogLevel    string `yaml:"log_level"`
 	GitHubToken string `yaml:"github_token"`
 	Env         Env    `yaml:"-"`
@@ -58,12 +64,31 @@ func Set(cfg Config) (Config, error) {
 }
 
 func setDefault(cfg Config) Config {
-	cfg.When.SetDefaultBool(true)
+	if !cfg.Condition.Fail.Initialized {
+		b, err := expr.NewBool(`any(util.map.values(phases), {.status == "failed"})`)
+		if err != nil {
+			panic(err)
+		}
+		cfg.Condition.Fail.Initialized = true
+		cfg.Condition.Fail.Prog = b
+		cfg.Condition.Fail.Fixed = false
+	}
+	cfg.Condition.Skip.SetDefaultBool(false)
 
 	for i, phase := range cfg.Phases {
 		phase.Condition.Skip.SetDefaultBool(false)
 		phase.Condition.Exit.SetDefaultBool(false)
 		phase.Condition.Fail.SetDefaultBool(false)
+
+		if !phase.Condition.Fail.Initialized {
+			b, err := expr.NewBool(`any(tasks, {.status == "failed"})`)
+			if err != nil {
+				panic(err)
+			}
+			phase.Condition.Fail.Initialized = true
+			phase.Condition.Fail.Prog = b
+			phase.Condition.Fail.Fixed = false
+		}
 
 		for j, task := range phase.Tasks {
 			if task.Command.Command.Text != "" {

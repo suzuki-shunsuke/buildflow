@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -256,6 +257,8 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 	return phaseParams, nil
 }
 
+var ErrBuildFail = errors.New("build failed")
+
 func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	pr, err := ctrl.getPR(ctx)
 	if err != nil {
@@ -267,6 +270,13 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	}
 	params.Util = expr.GetUtil()
 	params.Phases = make(map[string]ParamsPhase, len(ctrl.Config.Phases))
+
+	if f, err := ctrl.Config.Condition.Skip.Match(params.ToExpr()); err != nil {
+		return err
+	} else if f {
+		fmt.Fprintln(ctrl.Stderr, "the build is skipped")
+		return nil
+	}
 
 	for i, phaseCfg := range ctrl.Config.Phases {
 		phaseParams, err := ctrl.runPhase(ctx, params, i)
@@ -282,5 +292,12 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 			break
 		}
 	}
+
+	if f, err := ctrl.Config.Condition.Fail.Match(params.ToExpr()); err != nil {
+		return err
+	} else if f {
+		return ErrBuildFail
+	}
+
 	return nil
 }

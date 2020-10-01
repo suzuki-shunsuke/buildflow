@@ -64,7 +64,6 @@ func (runner Runner) action(c *cli.Context) error {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"when":      cfg.When,
 		"owner":     cfg.Owner,
 		"repo":      cfg.Repo,
 		"log_level": cfg.LogLevel,
