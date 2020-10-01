@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/Songmu/timeout v0.4.0
 	github.com/antonmedv/expr v1.8.9
-	github.com/google/go-github v17.0.0+incompatible
+	github.com/google/go-github/v32 v32.1.0
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
