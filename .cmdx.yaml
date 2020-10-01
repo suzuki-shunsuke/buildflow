@@ -43,3 +43,7 @@ tasks:
     required: true
     validate:
     - regexp: "^v\\d+\\.\\d+.\\d+(-\\d+)?$"
+- name: run
+  description: buildflow run for test
+  usage: buildflow run for test
+  script: "go run ./cmd/buildflow run"
