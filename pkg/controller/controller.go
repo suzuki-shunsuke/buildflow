@@ -39,20 +39,20 @@ func (phase ParamsPhase) ToTemplate() map[string]interface{} {
 		tasks[i] = task.ToTemplate()
 	}
 	return map[string]interface{}{
-		"status": phase.Status,
-		"tasks":  tasks,
+		"Status": phase.Status,
+		"Tasks":  tasks,
 	}
 }
 
 func (task Task) ToTemplate() map[string]interface{} {
 	return map[string]interface{}{
-		"name":            task.Config.Name.Text,
-		"status":          task.Result.Status,
-		"exit_code":       task.Result.Command.ExitCode,
-		"stdout":          task.Result.Command.Stdout,
-		"stderr":          task.Result.Command.Stderr,
-		"combined_output": task.Result.Command.CombinedOutput,
-		"file_text":       task.Result.File.Text,
+		"Name":           task.Config.Name.Text,
+		"Status":         task.Result.Status,
+		"ExitCode":       task.Result.Command.ExitCode,
+		"Stdout":         task.Result.Command.Stdout,
+		"Stderr":         task.Result.Command.Stderr,
+		"CombinedOutput": task.Result.Command.CombinedOutput,
+		"FileText":       task.Result.File.Text,
 	}
 }
 
@@ -66,22 +66,22 @@ func (params Params) ToTemplate() interface{} {
 		phases[k] = phase.ToTemplate()
 	}
 	return map[string]interface{}{
-		"pr":    params.PR,
-		"files": params.Files,
-		"util":  params.Util,
-		"task":  params.Task.ToTemplate(),
+		"PR":    params.PR,
+		"Files": params.Files,
+		"Util":  params.Util,
+		"Task":  params.Task.ToTemplate(),
 		// phases.<phase-name>.status
 		// phases.<phase-name>.tasks[index].name
 		// phases.<phase-name>.tasks[index].status
-		"phases": phases,
+		"Phases": phases,
 		// phase.name
-		"phase": map[string]interface{}{
-			"name": params.PhaseName,
+		"Phase": map[string]interface{}{
+			"Name": params.PhaseName,
 		},
-		"tasks": tasks,
-		"item": map[string]interface{}{
-			"key":   params.Item.Key,
-			"value": params.Item.Value,
+		"Tasks": tasks,
+		"Item": map[string]interface{}{
+			"Key":   params.Item.Key,
+			"Value": params.Item.Value,
 		},
 	}
 }

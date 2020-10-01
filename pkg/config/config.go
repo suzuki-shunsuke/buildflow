@@ -65,7 +65,7 @@ func Set(cfg Config) (Config, error) {
 
 func setDefault(cfg Config) Config {
 	if !cfg.Condition.Fail.Initialized {
-		b, err := expr.NewBool(`any(util.map.values(phases), {.status == "failed"})`)
+		b, err := expr.NewBool(`any(Util.Map.Values(Phases), {.Status == "failed"})`)
 		if err != nil {
 			panic(err)
 		}
@@ -81,7 +81,7 @@ func setDefault(cfg Config) Config {
 		phase.Condition.Fail.SetDefaultBool(false)
 
 		if !phase.Condition.Fail.Initialized {
-			b, err := expr.NewBool(`any(tasks, {.status == "failed"})`)
+			b, err := expr.NewBool(`any(Tasks, {.Status == "failed"})`)
 			if err != nil {
 				panic(err)
 			}

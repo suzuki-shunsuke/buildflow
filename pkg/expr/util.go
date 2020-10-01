@@ -35,15 +35,15 @@ func listValuesOfMap(m map[string]interface{}) []interface{} {
 
 func GetUtil() map[string]interface{} {
 	return map[string]interface{}{
-		"labelNames": LabelNames,
-		"env":        os.Getenv,
-		"string": map[string]interface{}{
-			"split":     strings.Split,
-			"trimSpace": strings.TrimSpace,
+		"LabelNames": LabelNames,
+		"Env":        os.Getenv,
+		"String": map[string]interface{}{
+			"Split":     strings.Split,
+			"TrimSpace": strings.TrimSpace,
 		},
-		"map": map[string]interface{}{
-			"keys":   listKeysOfMap,
-			"values": listValuesOfMap,
+		"Map": map[string]interface{}{
+			"Keys":   listKeysOfMap,
+			"Values": listValuesOfMap,
 		},
 	}
 }
