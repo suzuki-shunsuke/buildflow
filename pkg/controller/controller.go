@@ -158,9 +158,10 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 
 	// get pull request files
 	files, _, err := ctrl.GitHub.GetPRFiles(ctx, gh.ParamsGetPRFiles{
-		Owner: ctrl.Config.Owner,
-		Repo:  ctrl.Config.Repo,
-		PRNum: *pr.Number,
+		Owner:    ctrl.Config.Owner,
+		Repo:     ctrl.Config.Repo,
+		PRNum:    *pr.Number,
+		FileSize: *pr.Additions + *pr.Deletions + *pr.ChangedFiles,
 	})
 	if err != nil {
 		return Params{}, err
