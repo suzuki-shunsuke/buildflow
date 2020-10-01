@@ -53,6 +53,7 @@ func (task Task) ToTemplate() map[string]interface{} {
 		"Stderr":         task.Result.Command.Stderr,
 		"CombinedOutput": task.Result.Command.CombinedOutput,
 		"FileText":       task.Result.File.Text,
+		"Meta":           task.Config.Meta,
 	}
 }
 
