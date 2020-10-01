@@ -95,29 +95,33 @@ func (phase *Phase) Get(name string) []Task {
 	return arr
 }
 
-func (phase *Phase) outputResult() {
-	fmt.Fprintln(phase.Stderr, "\n================")
-	fmt.Fprintln(phase.Stderr, "= Phase Result =")
-	fmt.Fprintln(phase.Stderr, "================")
+func (phase ParamsPhase) outputResult(stderr io.Writer, name string) {
+	fmt.Fprintln(stderr, "\n================")
+	fmt.Fprintln(stderr, "= Phase Result: "+name+" =")
+	fmt.Fprintln(stderr, "================")
+	fmt.Fprintln(stderr, "status:", phase.Status)
+	if phase.Error != nil {
+		fmt.Fprintln(stderr, "error:", phase.Error)
+	}
 	utc := locale.UTC()
 	runTasks := []Task{}
-	for _, task := range phase.GetAll() {
+	for _, task := range phase.Tasks {
 		if task.Result.Status == "skipped" {
 			continue
 		}
 		runTasks = append(runTasks, task)
 	}
 	if len(runTasks) == 0 {
-		fmt.Fprintln(phase.Stderr, "No task is run")
+		fmt.Fprintln(stderr, "No task is run")
 	}
 	for _, task := range runTasks {
-		fmt.Fprintln(phase.Stderr, "task:", task.Config.Name.Text)
-		fmt.Fprintln(phase.Stderr, "status:", task.Result.Status)
-		fmt.Fprintln(phase.Stderr, "exit code:", task.Result.Command.ExitCode)
-		fmt.Fprintln(phase.Stderr, "start time:", task.Result.Time.Start.In(utc).Format(time.RFC3339))
-		fmt.Fprintln(phase.Stderr, "end time:", task.Result.Time.End.In(utc).Format(time.RFC3339))
-		fmt.Fprintln(phase.Stderr, "duration:", task.Result.Time.End.Sub(task.Result.Time.Start))
-		fmt.Fprintln(phase.Stderr, task.Result.Command.CombinedOutput)
+		fmt.Fprintln(stderr, "task:", task.Config.Name.Text)
+		fmt.Fprintln(stderr, "status:", task.Result.Status)
+		fmt.Fprintln(stderr, "exit code:", task.Result.Command.ExitCode)
+		fmt.Fprintln(stderr, "start time:", task.Result.Time.Start.In(utc).Format(time.RFC3339))
+		fmt.Fprintln(stderr, "end time:", task.Result.Time.End.In(utc).Format(time.RFC3339))
+		fmt.Fprintln(stderr, "duration:", task.Result.Time.End.Sub(task.Result.Time.Start))
+		fmt.Fprintln(stderr, task.Result.Command.CombinedOutput)
 	}
 }
 
@@ -243,7 +247,6 @@ func (phase *Phase) Run(ctx context.Context, params Params) error {
 		}
 	}
 	if allFinished {
-		phase.outputResult()
 		phase.EventQueue.Close()
 		return nil
 	}

@@ -10,4 +10,8 @@ const (
 	TaskResultRunning   = "running"
 	TaskResultSkipped   = "skipped"
 	TaskResultQueue     = "queue"
+
+	ResultFailed    = "failed"
+	ResultSucceeded = "succeeded"
+	ResultSkipped   = "skipped"
 )

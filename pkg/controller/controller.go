@@ -28,6 +28,8 @@ type Params struct {
 type ParamsPhase struct {
 	Tasks  []Task
 	Status string
+	Error  error
+	Exit   bool
 }
 
 func (phase ParamsPhase) ToTemplate() map[string]interface{} {
@@ -173,7 +175,87 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 	}, nil
 }
 
-func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
+func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (ParamsPhase, error) { //nolint:funlen
+	phaseCfg := ctrl.Config.Phases[idx]
+	params.PhaseName = phaseCfg.Name
+	tasksCfg := []config.Task{}
+	phaseParams := ParamsPhase{}
+	for _, task := range phaseCfg.Tasks {
+		tasks, err := Expand(task, params)
+		if err != nil {
+			phaseParams.Error = err
+			break
+		}
+		tasksCfg = append(tasksCfg, tasks...)
+	}
+	if phaseParams.Error != nil {
+		return phaseParams, nil
+	}
+	phaseCfg.Tasks = tasksCfg
+	ctrl.Config.Phases[idx] = phaseCfg
+
+	if f, err := phaseCfg.Condition.Skip.Match(params.ToExpr()); err != nil {
+		phaseParams.Error = err
+		return phaseParams, nil
+	} else if f {
+		phaseParams.Status = domain.ResultSkipped
+		return phaseParams, nil
+	}
+
+	if len(phaseCfg.Tasks) > 0 { //nolint:dupl
+		phase, err := ctrl.newPhase(phaseCfg)
+		if err != nil {
+			phaseParams.Error = err
+			return phaseParams, nil
+		}
+		phase.EventQueue.Push()
+		go func() {
+			<-ctx.Done()
+			phase.EventQueue.Close()
+		}()
+		params.Phases[phaseCfg.Name] = ParamsPhase{
+			Tasks: phase.Tasks,
+		}
+		params.Tasks = phase.Tasks
+		fmt.Fprintln(phase.Stderr, "\n==============")
+		fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
+		fmt.Fprintln(phase.Stderr, "==============")
+		for range phase.EventQueue.Queue {
+			if err := phase.Run(ctx, params); err != nil {
+				phase.EventQueue.Close()
+				log.Println(err)
+			}
+			params.Phases[phaseCfg.Name] = ParamsPhase{
+				Tasks: phase.Tasks,
+			}
+			params.Tasks = phase.Tasks
+		}
+		params.Phases[phaseCfg.Name] = ParamsPhase{
+			Tasks: phase.Tasks,
+		}
+		phaseParams.Tasks = phase.Tasks
+	}
+
+	if f, err := phaseCfg.Condition.Fail.Match(params.ToExpr()); err != nil { //nolint:gocritic
+		phaseParams.Error = err
+		return phaseParams, nil
+	} else if f {
+		phaseParams.Status = domain.ResultFailed
+	} else {
+		phaseParams.Status = domain.ResultSucceeded
+	}
+
+	if f, err := phaseCfg.Condition.Exit.Match(params.ToExpr()); err != nil {
+		return phaseParams, err
+	} else if f {
+		// TODO update result
+		phaseParams.Exit = true
+		return phaseParams, nil
+	}
+	return phaseParams, nil
+}
+
+func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	pr, err := ctrl.getPR(ctx)
 	if err != nil {
 		return err
@@ -183,65 +265,19 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen
 		return err
 	}
 	params.Util = expr.GetUtil()
+	params.Phases = make(map[string]ParamsPhase, len(ctrl.Config.Phases))
 
 	for i, phaseCfg := range ctrl.Config.Phases {
-		params.PhaseName = phaseCfg.Name
-		tasksCfg := []config.Task{}
-		for _, task := range phaseCfg.Tasks {
-			tasks, err := Expand(task, params)
-			if err != nil {
-				return err
-			}
-			tasksCfg = append(tasksCfg, tasks...)
+		phaseParams, err := ctrl.runPhase(ctx, params, i)
+		if phaseParams.Error != nil {
+			phaseParams.Status = domain.ResultFailed
 		}
-		phaseCfg.Tasks = tasksCfg
-		ctrl.Config.Phases[i] = phaseCfg
-
-		if f, err := phaseCfg.Condition.Skip.Match(params.ToExpr()); err != nil {
+		phaseParams.outputResult(ctrl.Stderr, phaseCfg.Name)
+		params.Phases[phaseCfg.Name] = phaseParams
+		if err != nil {
 			return err
-		} else if f {
-			// TODO update result
-			continue
 		}
-
-		params.Phases = map[string]ParamsPhase{}
-
-		if len(phaseCfg.Tasks) > 0 { //nolint:dupl
-			phase, err := ctrl.newPhase(phaseCfg)
-			if err != nil {
-				return err
-			}
-			phase.EventQueue.Push()
-			go func() {
-				<-ctx.Done()
-				phase.EventQueue.Close()
-			}()
-			params.Phases[phaseCfg.Name] = ParamsPhase{
-				Tasks: phase.Tasks,
-			}
-			params.Tasks = phase.Tasks
-			fmt.Fprintln(phase.Stderr, "\n==============")
-			fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
-			fmt.Fprintln(phase.Stderr, "==============")
-			for range phase.EventQueue.Queue {
-				if err := phase.Run(ctx, params); err != nil {
-					phase.EventQueue.Close()
-					log.Println(err)
-				}
-				params.Phases[phaseCfg.Name] = ParamsPhase{
-					Tasks: phase.Tasks,
-				}
-				params.Tasks = phase.Tasks
-			}
-			params.Phases[phaseCfg.Name] = ParamsPhase{
-				Tasks: phase.Tasks,
-			}
-		}
-
-		if f, err := phaseCfg.Condition.Exit.Match(params.ToExpr()); err != nil {
-			return err
-		} else if f {
-			// TODO update result
+		if phaseParams.Exit {
 			break
 		}
 	}
