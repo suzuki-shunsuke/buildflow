@@ -1,5 +1,11 @@
 # buildflow
 
+[![Build Status](https://github.com/suzuki-shunsuke/buildflow/workflows/CI/badge.svg)](https://github.com/suzuki-shunsuke/buildflow/actions)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/a92115bcb5226aaed505/test_coverage)](https://codeclimate.com/github/suzuki-shunsuke/buildflow/test_coverage)
+[![Go Report Card](https://goreportcard.com/badge/github.com/suzuki-shunsuke/buildflow)](https://goreportcard.com/report/github.com/suzuki-shunsuke/buildflow)
+[![GitHub last commit](https://img.shields.io/github/last-commit/suzuki-shunsuke/buildflow.svg)](https://github.com/suzuki-shunsuke/buildflow)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/buildflow/master/LICENSE)
+
 CLI tool for powerful build pipeline
 
 We can define the build pipeline with YAML configuration, then we can run the build pipeline by `buildflow run` command.
