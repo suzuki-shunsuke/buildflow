@@ -21,10 +21,10 @@ type Params struct {
 	Files     interface{}
 	Util      map[string]interface{}
 	Phases    map[string]ParamsPhase
-	Tasks     []Task
 	Task      Task
 	PhaseName string
 	Item      config.Item
+	Meta      map[string]interface{}
 }
 
 type ParamsPhase struct {
@@ -32,6 +32,8 @@ type ParamsPhase struct {
 	Status string
 	Error  error
 	Exit   bool
+	Meta   map[string]interface{}
+	Name   string
 }
 
 func (phase ParamsPhase) ToTemplate() map[string]interface{} {
@@ -42,6 +44,8 @@ func (phase ParamsPhase) ToTemplate() map[string]interface{} {
 	return map[string]interface{}{
 		"Status": phase.Status,
 		"Tasks":  tasks,
+		"Meta":   phase.Meta,
+		"Name":   phase.Name,
 	}
 }
 
@@ -58,38 +62,44 @@ func (task Task) ToTemplate() map[string]interface{} {
 	}
 }
 
-func (params Params) ToTemplate() interface{} {
-	tasks := make([]map[string]interface{}, len(params.Tasks))
-	for i, task := range params.Tasks {
-		tasks[i] = task.ToTemplate()
-	}
+func (params Params) ToTemplate() map[string]interface{} {
 	phases := make(map[string]interface{}, len(params.Phases))
 	for k, phase := range params.Phases {
 		phases[k] = phase.ToTemplate()
 	}
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"PR":    params.PR,
 		"Files": params.Files,
-		"Util":  params.Util,
 		"Task":  params.Task.ToTemplate(),
 		// phases.<phase-name>.status
 		// phases.<phase-name>.tasks[index].name
 		// phases.<phase-name>.tasks[index].status
 		"Phases": phases,
-		// phase.name
-		"Phase": map[string]interface{}{
-			"Name": params.PhaseName,
-		},
-		"Tasks": tasks,
 		"Item": map[string]interface{}{
 			"Key":   params.Item.Key,
 			"Value": params.Item.Value,
 		},
+		"Meta": params.Meta,
 	}
+
+	var tasks []map[string]interface{}
+	if params.PhaseName != "" {
+		pTasks := params.Phases[params.PhaseName].Tasks
+		tasks = make([]map[string]interface{}, len(pTasks))
+		for i, task := range pTasks {
+			tasks[i] = task.ToTemplate()
+		}
+
+		m["Phase"] = params.Phases[params.PhaseName].ToTemplate()
+	}
+	m["Tasks"] = tasks
+	return m
 }
 
-func (params Params) ToExpr() interface{} {
-	return params.ToTemplate()
+func (params Params) ToExpr() map[string]interface{} {
+	a := params.ToTemplate()
+	a["Util"] = params.Util
+	return a
 }
 
 func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint:unparam
@@ -160,14 +170,27 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 }
 
 func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
+	params := Params{
+		Util:   util.GetUtil(),
+		Meta:   ctrl.Config.Meta,
+		Phases: make(map[string]ParamsPhase, len(ctrl.Config.Phases)),
+	}
+	for _, phase := range ctrl.Config.Phases {
+		params.Phases[phase.Name] = ParamsPhase{
+			Meta: phase.Meta,
+			Name: phase.Name,
+		}
+	}
+
 	if pr == nil {
 		logrus.Debug("pr is nil")
-		return Params{}, nil
+		return params, nil
 	}
 	prJSON, err := dataeq.JSON.Convert(pr)
 	if err != nil {
-		return Params{}, err
+		return params, err
 	}
+	params.PR = prJSON
 
 	// get pull request files
 	files, _, err := ctrl.GitHub.GetPRFiles(ctx, gh.ParamsGetPRFiles{
@@ -181,23 +204,25 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 		"changed_files":       pr.GetChangedFiles(),
 	}).Debug("the number of pull request files")
 	if err != nil {
-		return Params{}, err
+		return params, err
 	}
 	filesJSON, err := dataeq.JSON.Convert(files)
 	if err != nil {
-		return Params{}, err
+		return params, err
 	}
-	return Params{
-		PR:    prJSON,
-		Files: filesJSON,
-	}, nil
+	params.Files = filesJSON
+
+	return params, nil
 }
 
 func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (ParamsPhase, error) { //nolint:funlen
 	phaseCfg := ctrl.Config.Phases[idx]
 	params.PhaseName = phaseCfg.Name
 	tasksCfg := []config.Task{}
-	phaseParams := ParamsPhase{}
+	phaseParams := ParamsPhase{
+		Meta: phaseCfg.Meta,
+		Name: phaseCfg.Name,
+	}
 	for _, task := range phaseCfg.Tasks {
 		tasks, err := Expand(task, params)
 		if err != nil {
@@ -226,15 +251,13 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 			phaseParams.Error = err
 			return phaseParams, nil
 		}
+		phaseParams.Tasks = phase.Tasks
 		phase.EventQueue.Push()
 		go func() {
 			<-ctx.Done()
 			phase.EventQueue.Close()
 		}()
-		params.Phases[phaseCfg.Name] = ParamsPhase{
-			Tasks: phase.Tasks,
-		}
-		params.Tasks = phase.Tasks
+		params.Phases[phaseCfg.Name] = phaseParams
 		fmt.Fprintln(phase.Stderr, "\n==============")
 		fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
 		fmt.Fprintln(phase.Stderr, "==============")
@@ -243,14 +266,11 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 				phase.EventQueue.Close()
 				log.Println(err)
 			}
-			params.Phases[phaseCfg.Name] = ParamsPhase{
-				Tasks: phase.Tasks,
-			}
-			params.Tasks = phase.Tasks
+			phaseParams.Tasks = phase.Tasks
+			params.Phases[phaseCfg.Name] = phaseParams
 		}
-		params.Phases[phaseCfg.Name] = ParamsPhase{
-			Tasks: phase.Tasks,
-		}
+		phaseParams.Tasks = phase.Tasks
+		params.Phases[phaseCfg.Name] = phaseParams
 		phaseParams.Tasks = phase.Tasks
 	}
 
@@ -292,8 +312,6 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	if err != nil {
 		return err
 	}
-	params.Util = util.GetUtil()
-	params.Phases = make(map[string]ParamsPhase, len(ctrl.Config.Phases))
 
 	if f, err := ctrl.Config.Condition.Skip.Match(params.ToExpr()); err != nil {
 		return err

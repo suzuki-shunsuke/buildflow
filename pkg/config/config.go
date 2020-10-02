@@ -11,6 +11,7 @@ type Phase struct {
 	Name      string
 	Tasks     []Task
 	Condition PhaseCondition
+	Meta      map[string]interface{}
 }
 
 type PhaseCondition struct {
@@ -34,6 +35,7 @@ type Config struct {
 	Env         Env    `yaml:"-"`
 	Parallelism int
 	PR          bool
+	Meta        map[string]interface{}
 }
 
 type Env struct {

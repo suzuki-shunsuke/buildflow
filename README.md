@@ -347,6 +347,11 @@ repo: buildflow
 # The maximum number of tasks which are run in parallel.
 # The default is 0, which means there is no limitation.
 parallelism: 1
+# The meta attributes of the build.
+# You can use this field freely.
+# You can refer to this field in expressions and text/template.
+meta:
+  service: foo
 # The build condition
 condtion:
   # When the skip is true, the build is skipped.
@@ -364,6 +369,11 @@ condtion:
 phases:
 # The phase name. This must be unique and static.
 - name: init
+  # The meta attributes of the phase.
+  # You can use this field freely.
+  # You can refer to this field in expressions and text/template.
+  meta:
+    service: foo
   # the list of tasks.
   tasks:
   # The task name. The value is parsed by text/template.
