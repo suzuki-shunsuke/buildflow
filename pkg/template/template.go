@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/suzuki-shunsuke/buildflow/pkg/util"
 )
 
 type Template struct {
@@ -12,7 +13,7 @@ type Template struct {
 }
 
 func Compile(tpl string) (Template, error) {
-	tmpl, err := template.New("text").Funcs(sprig.TxtFuncMap()).Parse(tpl)
+	tmpl, err := template.New("text").Funcs(util.GetTemplateUtil()).Funcs(sprig.TxtFuncMap()).Parse(tpl)
 	if err != nil {
 		return Template{}, err
 	}
