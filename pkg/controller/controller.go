@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/google/go-github/v32/github"
+	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
@@ -121,10 +122,16 @@ func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint
 
 func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 	if !ctrl.Config.PR {
+		logrus.Debug("pr is disabled")
 		return nil, nil
 	}
 	prNum := ctrl.Config.Env.PRNumber
 	if prNum <= 0 {
+		logrus.WithFields(logrus.Fields{
+			"owner": ctrl.Config.Owner,
+			"repo":  ctrl.Config.Repo,
+			"sha":   ctrl.Config.Env.SHA,
+		}).Debug("get pull request from SHA")
 		prs, _, err := ctrl.GitHub.ListPRsWithCommit(ctx, gh.ParamsListPRsWithCommit{
 			Owner: ctrl.Config.Owner,
 			Repo:  ctrl.Config.Repo,
@@ -133,6 +140,9 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 		if err != nil {
 			return nil, err
 		}
+		logrus.WithFields(logrus.Fields{
+			"size": len(prs),
+		}).Debug("the number of pull requests assosicated with the commit")
 		if len(prs) == 0 {
 			return nil, nil
 		}
@@ -151,6 +161,7 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 
 func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
 	if pr == nil {
+		logrus.Debug("pr is nil")
 		return Params{}, nil
 	}
 	prJSON, err := dataeq.JSON.Convert(pr)
@@ -165,6 +176,10 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 		PRNum:    pr.GetNumber(),
 		FileSize: pr.GetChangedFiles(),
 	})
+	logrus.WithFields(logrus.Fields{
+		"files_gotten_by_api": len(files),
+		"changed_files":       pr.GetChangedFiles(),
+	}).Debug("the number of pull request files")
 	if err != nil {
 		return Params{}, err
 	}
@@ -265,6 +280,14 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	if err != nil {
 		return err
 	}
+
+	if pr != nil {
+		logrus.WithFields(logrus.Fields{
+			"pr_number":     pr.GetNumber(),
+			"changed_files": pr.GetChangedFiles(),
+		}).Debug("pull request")
+	}
+
 	params, err := ctrl.getTaskParams(ctx, pr)
 	if err != nil {
 		return err
