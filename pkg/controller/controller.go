@@ -123,8 +123,8 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 	if !ctrl.Config.PR {
 		return nil, nil
 	}
-	if ctrl.Config.Env.PRNumber <= 0 {
-		// get pull request from SHA
+	prNum := ctrl.Config.Env.PRNumber
+	if prNum <= 0 {
 		prs, _, err := ctrl.GitHub.ListPRsWithCommit(ctx, gh.ParamsListPRsWithCommit{
 			Owner: ctrl.Config.Owner,
 			Repo:  ctrl.Config.Repo,
@@ -133,15 +133,15 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(prs) != 0 {
-			return prs[0], nil
+		if len(prs) == 0 {
+			return nil, nil
 		}
-		return nil, nil
+		prNum = prs[0].GetNumber()
 	}
 	pr, _, err := ctrl.GitHub.GetPR(ctx, gh.ParamsGetPR{
 		Owner: ctrl.Config.Owner,
 		Repo:  ctrl.Config.Repo,
-		PRNum: ctrl.Config.Env.PRNumber,
+		PRNum: prNum,
 	})
 	if err != nil {
 		return nil, err
@@ -162,8 +162,8 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 	files, _, err := ctrl.GitHub.GetPRFiles(ctx, gh.ParamsGetPRFiles{
 		Owner:    ctrl.Config.Owner,
 		Repo:     ctrl.Config.Repo,
-		PRNum:    *pr.Number,
-		FileSize: *pr.Additions + *pr.Deletions + *pr.ChangedFiles,
+		PRNum:    pr.GetNumber(),
+		FileSize: pr.GetChangedFiles(),
 	})
 	if err != nil {
 		return Params{}, err

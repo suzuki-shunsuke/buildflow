@@ -58,7 +58,7 @@ func (client Client) GetPRFiles(ctx context.Context, params ParamsGetPRFiles) ([
 	if params.FileSize == 0 {
 		return nil, nil, nil
 	}
-	n := params.FileSize / maxPerPage
+	n := (params.FileSize / maxPerPage) + 1
 	lastPerPage := params.FileSize % maxPerPage
 	var gResp *github.Response
 	for i := 1; i <= n; i++ {
