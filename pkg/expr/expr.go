@@ -2,6 +2,7 @@ package expr
 
 import (
 	"context"
+	"errors"
 
 	"github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
@@ -63,6 +64,8 @@ func NewBool(expression string) (BoolProgram, error) {
 	}, nil
 }
 
+var ErrNoBoolVariable = errors.New(`the variable "answer" isn't defined`)
+
 func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
 	if prog.script == nil {
 		return true, nil
@@ -77,6 +80,12 @@ func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if !compiled.IsDefined("answer") {
+		return false, ErrNoBoolVariable
+	}
 	v := compiled.Get("answer")
+	if t := v.ValueType(); t != "bool" {
+		return false, errors.New(`the type of the variable "answer" should be bool, but actually ` + t)
+	}
 	return v.Bool(), nil
 }
