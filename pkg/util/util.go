@@ -34,10 +34,11 @@ func listValuesOfMap(m map[string]interface{}) []interface{} {
 	return vals
 }
 
-func getTaskByName(tasks []map[string]interface{}, name string) map[string]interface{} {
+func getTaskByName(tasks []interface{}, name string) map[string]interface{} {
 	for _, task := range tasks {
-		if n, ok := task["Name"]; ok && n == name {
-			return task
+		m := task.(map[string]interface{})
+		if n, ok := m["Name"]; ok && n == name {
+			return m
 		}
 	}
 	return nil

@@ -37,7 +37,7 @@ type ParamsPhase struct {
 }
 
 func (phase ParamsPhase) ToTemplate() map[string]interface{} {
-	tasks := make([]map[string]interface{}, len(phase.Tasks))
+	tasks := make([]interface{}, len(phase.Tasks))
 	for i, task := range phase.Tasks {
 		tasks[i] = task.ToTemplate()
 	}
@@ -83,10 +83,10 @@ func (params Params) ToTemplate() map[string]interface{} {
 		"Meta": params.Meta,
 	}
 
-	var tasks []map[string]interface{}
+	var tasks []interface{}
 	if params.PhaseName != "" {
 		pTasks := params.Phases[params.PhaseName].Tasks
-		tasks = make([]map[string]interface{}, len(pTasks))
+		tasks = make([]interface{}, len(pTasks))
 		for i, task := range pTasks {
 			tasks[i] = task.ToTemplate()
 		}
@@ -99,7 +99,7 @@ func (params Params) ToTemplate() map[string]interface{} {
 
 func (params Params) ToExpr() map[string]interface{} {
 	a := params.ToTemplate()
-	a["Util"] = params.Util
+	// a["Util"] = params.Util
 	return a
 }
 

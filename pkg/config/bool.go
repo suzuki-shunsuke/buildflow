@@ -13,7 +13,7 @@ type Bool struct {
 	FixedValue  bool
 }
 
-func (b Bool) Match(params interface{}) (bool, error) {
+func (b Bool) Match(params map[string]interface{}) (bool, error) {
 	if b.Fixed {
 		return b.FixedValue, nil
 	}

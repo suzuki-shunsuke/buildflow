@@ -222,18 +222,16 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 			return
 		}
 		task.Result.Status = domain.TaskResultSucceeded
-		task.Result.Output = make(map[string]interface{}, len(task.Config.Outputs))
 		params.Task = task
-		for _, output := range task.Config.Outputs {
-			val, err := output.Prog.Run(params.ToExpr())
-			if err != nil {
-				task.Result.Status = domain.TaskResultFailed
-				task.Result.Error = err
-				log.Println(err)
-				return
-			}
-			task.Result.Output[output.Name] = val
+		phase.Set(idx, task)
+		outputs, err := task.Config.Output.Run(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = domain.TaskResultFailed
+			task.Result.Error = err
+			log.Println(err)
+			return
 		}
+		task.Result.Output = outputs
 	}(idx, task, params)
 	return nil
 }

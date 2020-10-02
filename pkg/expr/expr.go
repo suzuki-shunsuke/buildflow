@@ -1,61 +1,82 @@
 package expr
 
 import (
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"context"
+
+	"github.com/d5/tengo/v2"
+	"github.com/d5/tengo/v2/stdlib"
 )
 
 type Program struct {
-	prog *vm.Program
+	script *tengo.Script
 }
 
 func New(expression string) (Program, error) {
 	if expression == "" {
 		return Program{}, nil
 	}
-	prog, err := expr.Compile(expression)
-	if err != nil {
-		return Program{}, err
-	}
+
+	script := tengo.NewScript([]byte(expression))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+
 	return Program{
-		prog: prog,
+		script: script,
 	}, nil
 }
 
-func (prog Program) Run(params interface{}) (interface{}, error) {
-	if prog.prog == nil {
+func (prog Program) Run(params map[string]interface{}) (map[string]interface{}, error) {
+	if prog.script == nil {
 		return nil, nil
 	}
-	return expr.Run(prog.prog, params)
+	for k, v := range params {
+		if err := prog.script.Add(k, v); err != nil {
+			return nil, err
+		}
+	}
+	compiled, err := prog.script.RunContext(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	vars := compiled.GetAll()
+	m := make(map[string]interface{}, len(vars))
+	for _, v := range vars {
+		m[v.Name()] = v.Value()
+	}
+
+	return m, nil
 }
 
 type BoolProgram struct {
-	prog *vm.Program
+	script *tengo.Script
 }
 
 func NewBool(expression string) (BoolProgram, error) {
 	if expression == "" {
 		return BoolProgram{}, nil
 	}
-	prog, err := expr.Compile(expression, expr.AsBool())
-	if err != nil {
-		return BoolProgram{}, err
-	}
+
+	script := tengo.NewScript([]byte(expression))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+
 	return BoolProgram{
-		prog: prog,
+		script: script,
 	}, nil
 }
 
-func (prog BoolProgram) Match(params interface{}) (bool, error) {
-	if prog.prog == nil {
+func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
+	if prog.script == nil {
 		return true, nil
 	}
-	output, err := expr.Run(prog.prog, params)
+
+	for k, v := range params {
+		if err := prog.script.Add(k, v); err != nil {
+			return false, err
+		}
+	}
+	compiled, err := prog.script.RunContext(context.Background())
 	if err != nil {
 		return false, err
 	}
-	if f, ok := output.(bool); !ok || !f {
-		return false, nil
-	}
-	return true, nil
+	v := compiled.Get("answer")
+	return v.Bool(), nil
 }
