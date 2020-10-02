@@ -11,8 +11,8 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
-	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 	gh "github.com/suzuki-shunsuke/buildflow/pkg/github"
+	"github.com/suzuki-shunsuke/buildflow/pkg/util"
 	"github.com/suzuki-shunsuke/go-dataeq/dataeq"
 )
 
@@ -292,7 +292,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	if err != nil {
 		return err
 	}
-	params.Util = expr.GetUtil()
+	params.Util = util.GetUtil()
 	params.Phases = make(map[string]ParamsPhase, len(ctrl.Config.Phases))
 
 	if f, err := ctrl.Config.Condition.Skip.Match(params.ToExpr()); err != nil {

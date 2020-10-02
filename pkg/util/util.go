@@ -1,8 +1,9 @@
-package expr
+package util
 
 import (
 	"os"
 	"strings"
+	"text/template"
 )
 
 func LabelNames(labels interface{}) []string {
@@ -33,6 +34,22 @@ func listValuesOfMap(m map[string]interface{}) []interface{} {
 	return vals
 }
 
+func getTaskByName(tasks []map[string]interface{}, name string) map[string]interface{} {
+	for _, task := range tasks {
+		if n, ok := task["Name"]; ok && n == name {
+			return task
+		}
+	}
+	return nil
+}
+
+func GetTemplateUtil() template.FuncMap {
+	return template.FuncMap{
+		"LabelNames":    LabelNames,
+		"GetTaskByName": getTaskByName,
+	}
+}
+
 func GetUtil() map[string]interface{} {
 	return map[string]interface{}{
 		"LabelNames": LabelNames,
@@ -45,5 +62,6 @@ func GetUtil() map[string]interface{} {
 			"Keys":   listKeysOfMap,
 			"Values": listValuesOfMap,
 		},
+		"GetTaskByName": getTaskByName,
 	}
 }

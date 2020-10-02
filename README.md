@@ -443,7 +443,7 @@ phases:
 - Item
   - Key
   - Value
-- Util: utility functions
+- Util: utility functions # Note that Util can't used at template. Util can be used at expression
 
 #### Example
 
@@ -492,7 +492,14 @@ Util:
   Map:
     Keys: func(map[string]interface{}) []string: return a list of keys of a map
     Values: func(map[string]interface{}) []interface{}: return a list of values of a map
+  GetTaskByName: func(tasks, name) task: get a task by task name
 ```
+
+### Custom Functions of template
+
+* http://masterminds.github.io/sprig/
+* LabelNames: func(PR.labels) []string: return a list of pull request label names
+* GetTaskByName: func(tasks, name) task: get a task by task name
 
 ## Usage
 
