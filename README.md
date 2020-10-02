@@ -415,6 +415,12 @@ phases:
     # You can refer to this field in expressions and text/template.
     meta:
       service: foo
+    # task's outputs.
+    # This is useful to format task's result for subsequent tasks.
+    outputs:
+    - name: foo
+      # value is an expression of antonmedv/expr.
+      value: Util.String.Split(Util.String.TrimSpace(Task.Stdout), "\n")
   - name: bar
     # read a file.
     # This is used to refer to the content of the file in subsequent tasks.
