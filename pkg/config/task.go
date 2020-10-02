@@ -21,6 +21,7 @@ type Task struct {
 	Item               Item `yaml:"-"`
 	CompiledItems      Items
 	Meta               map[string]interface{}
+	Outputs            []Output
 }
 
 type Dependency struct {

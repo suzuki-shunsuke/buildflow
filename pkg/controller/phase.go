@@ -125,7 +125,7 @@ func (phase ParamsPhase) outputResult(stderr io.Writer, name string) {
 	}
 }
 
-func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Params) error { //nolint:funlen
+func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Params) error { //nolint:funlen,gocognit
 	if task.Result.Status != domain.TaskResultQueue {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		task.Config.ReadFile.Path = p
 	}
 
-	go func(idx int, task Task) {
+	go func(idx int, task Task, params Params) {
 		defer func() {
 			phase.Set(idx, task)
 			phase.EventQueue.Push()
@@ -217,11 +217,24 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		task.Result = result
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
+			task.Result.Error = err
 			log.Println(err)
 			return
 		}
 		task.Result.Status = domain.TaskResultSucceeded
-	}(idx, task)
+		task.Result.Output = make(map[string]interface{}, len(task.Config.Outputs))
+		params.Task = task
+		for _, output := range task.Config.Outputs {
+			val, err := output.Prog.Run(params.ToExpr())
+			if err != nil {
+				task.Result.Status = domain.TaskResultFailed
+				task.Result.Error = err
+				log.Println(err)
+				return
+			}
+			task.Result.Output[output.Name] = val
+		}
+	}(idx, task, params)
 	return nil
 }
 
