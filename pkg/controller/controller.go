@@ -25,6 +25,7 @@ type Params struct {
 	Task      Task
 	PhaseName string
 	Item      config.Item
+	Meta      map[string]interface{}
 }
 
 type ParamsPhase struct {
@@ -32,6 +33,7 @@ type ParamsPhase struct {
 	Status string
 	Error  error
 	Exit   bool
+	Meta   map[string]interface{}
 }
 
 func (phase ParamsPhase) ToTemplate() map[string]interface{} {
@@ -42,6 +44,7 @@ func (phase ParamsPhase) ToTemplate() map[string]interface{} {
 	return map[string]interface{}{
 		"Status": phase.Status,
 		"Tasks":  tasks,
+		"Meta":   phase.Meta,
 	}
 }
 
@@ -58,7 +61,7 @@ func (task Task) ToTemplate() map[string]interface{} {
 	}
 }
 
-func (params Params) ToTemplate() interface{} {
+func (params Params) ToTemplate() map[string]interface{} {
 	tasks := make([]map[string]interface{}, len(params.Tasks))
 	for i, task := range params.Tasks {
 		tasks[i] = task.ToTemplate()
@@ -70,7 +73,6 @@ func (params Params) ToTemplate() interface{} {
 	return map[string]interface{}{
 		"PR":    params.PR,
 		"Files": params.Files,
-		"Util":  params.Util,
 		"Task":  params.Task.ToTemplate(),
 		// phases.<phase-name>.status
 		// phases.<phase-name>.tasks[index].name
@@ -85,11 +87,14 @@ func (params Params) ToTemplate() interface{} {
 			"Key":   params.Item.Key,
 			"Value": params.Item.Value,
 		},
+		"Meta": params.Meta,
 	}
 }
 
-func (params Params) ToExpr() interface{} {
-	return params.ToTemplate()
+func (params Params) ToExpr() map[string]interface{} {
+	a := params.ToTemplate()
+	a["Util"] = params.Util
+	return a
 }
 
 func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint:unparam
@@ -190,6 +195,7 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 	return Params{
 		PR:    prJSON,
 		Files: filesJSON,
+		Meta:  ctrl.Config.Meta,
 	}, nil
 }
 
