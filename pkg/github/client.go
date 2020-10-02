@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/go-github/v32/github"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
@@ -56,9 +57,10 @@ const maxPerPage = 100
 func (client Client) GetPRFiles(ctx context.Context, params ParamsGetPRFiles) ([]*github.CommitFile, *github.Response, error) {
 	ret := []*github.CommitFile{}
 	if params.FileSize == 0 {
+		logrus.Debug("file size is 0")
 		return nil, nil, nil
 	}
-	n := params.FileSize / maxPerPage
+	n := (params.FileSize / maxPerPage) + 1
 	lastPerPage := params.FileSize % maxPerPage
 	var gResp *github.Response
 	for i := 1; i <= n; i++ {
