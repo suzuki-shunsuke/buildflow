@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-func LabelNames(labels interface{}) []string {
+func labelNames(labels interface{}) []string {
 	if labels == nil {
 		return []string{}
 	}
@@ -45,14 +45,14 @@ func getTaskByName(tasks []map[string]interface{}, name string) map[string]inter
 
 func GetTemplateUtil() template.FuncMap {
 	return template.FuncMap{
-		"LabelNames":    LabelNames,
+		"LabelNames":    labelNames,
 		"GetTaskByName": getTaskByName,
 	}
 }
 
 func GetUtil() map[string]interface{} {
 	return map[string]interface{}{
-		"LabelNames": LabelNames,
+		"LabelNames": labelNames,
 		"Env":        os.Getenv,
 		"String": map[string]interface{}{
 			"Split":     strings.Split,
