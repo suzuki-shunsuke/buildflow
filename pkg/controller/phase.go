@@ -189,6 +189,22 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 	task.Result.Status = domain.TaskResultRunning
 	phase.Set(idx, task)
 
+	// evaluate input and add params
+	input, err := task.Config.Input.Run(params.ToExpr())
+	if err != nil {
+		task.Result.Status = domain.TaskResultFailed
+		task.Result.Error = err
+		logrus.WithFields(logrus.Fields{
+			"phase_name": phase.Config.Name,
+			"task_name":  task.Config.Name.Text,
+			"task_index": idx,
+		}).WithError(err).Error("failed to run an input")
+		return err
+	}
+	task.Result.Input = input
+	params.Task = task
+	phase.Set(idx, task)
+
 	switch task.Config.Type {
 	case domain.TaskTypeCommand:
 		cmd, err := task.Config.Command.Command.New(params.ToTemplate())

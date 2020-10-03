@@ -13,6 +13,7 @@ type Result struct {
 	// skipped
 	// cancelled
 	Status  string
+	Input   interface{}
 	Output  interface{}
 	Time    Time
 	Type    string

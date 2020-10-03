@@ -58,6 +58,7 @@ func (task Task) ToTemplate() map[string]interface{} {
 		"FileText":       task.Result.File.Text,
 		"Meta":           task.Config.Meta,
 		"Output":         task.Result.Output,
+		"Input":          task.Result.Input,
 	}
 }
 
@@ -96,8 +97,7 @@ func (params Params) ToTemplate() map[string]interface{} {
 }
 
 func (params Params) ToExpr() map[string]interface{} {
-	a := params.ToTemplate()
-	return a
+	return params.ToTemplate()
 }
 
 func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint:unparam
