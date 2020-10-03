@@ -27,22 +27,32 @@ type Phase struct {
 }
 
 type EventQueue struct {
-	Queue chan struct{}
-	once  sync.Once
+	Queue  chan struct{}
+	mutex  sync.RWMutex
+	closed bool
 }
 
 func (queue *EventQueue) Push() {
-	queue.Queue <- struct{}{}
+	queue.mutex.Lock()
+	if !queue.closed {
+		queue.Queue <- struct{}{}
+	}
+	queue.mutex.Unlock()
 }
 
 func (queue *EventQueue) Pop() {
+	queue.mutex.Lock()
 	<-queue.Queue
+	queue.mutex.Unlock()
 }
 
 func (queue *EventQueue) Close() {
-	queue.once.Do(func() {
+	queue.mutex.Lock()
+	if !queue.closed {
 		close(queue.Queue)
-	})
+		queue.closed = true
+	}
+	queue.mutex.Unlock()
 }
 
 type TaskQueue struct {
