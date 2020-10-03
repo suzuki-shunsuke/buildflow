@@ -12,14 +12,12 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	gh "github.com/suzuki-shunsuke/buildflow/pkg/github"
-	"github.com/suzuki-shunsuke/buildflow/pkg/util"
 	"github.com/suzuki-shunsuke/go-dataeq/dataeq"
 )
 
 type Params struct {
 	PR        interface{}
 	Files     interface{}
-	Util      map[string]interface{}
 	Phases    map[string]ParamsPhase
 	Task      Task
 	PhaseName string
@@ -99,7 +97,6 @@ func (params Params) ToTemplate() map[string]interface{} {
 
 func (params Params) ToExpr() map[string]interface{} {
 	a := params.ToTemplate()
-	// a["Util"] = params.Util
 	return a
 }
 
@@ -172,7 +169,6 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 
 func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
 	params := Params{
-		Util:   util.GetUtil(),
 		Meta:   ctrl.Config.Meta,
 		Phases: make(map[string]ParamsPhase, len(ctrl.Config.Phases)),
 	}
