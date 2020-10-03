@@ -10,32 +10,27 @@ import (
 )
 
 type Program struct {
-	script *tengo.Script
+	source string
 }
 
 func New(expression string) (Program, error) {
-	if expression == "" {
-		return Program{}, nil
-	}
-
-	script := tengo.NewScript([]byte(expression))
-	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
-
 	return Program{
-		script: script,
+		source: expression,
 	}, nil
 }
 
 func (prog Program) Run(params map[string]interface{}) (interface{}, error) {
-	if prog.script == nil {
+	if prog.source == "" {
 		return nil, nil
 	}
+	script := tengo.NewScript([]byte(prog.source))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 	for k, v := range params {
-		if err := prog.script.Add(k, v); err != nil {
+		if err := script.Add(k, v); err != nil {
 			return nil, err
 		}
 	}
-	compiled, err := prog.script.RunContext(context.Background())
+	compiled, err := script.RunContext(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -48,33 +43,28 @@ func (prog Program) Run(params map[string]interface{}) (interface{}, error) {
 }
 
 type BoolProgram struct {
-	script *tengo.Script
+	source string
 }
 
 func NewBool(expression string) (BoolProgram, error) {
-	if expression == "" {
-		return BoolProgram{}, nil
-	}
-
-	script := tengo.NewScript([]byte(expression))
-	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
-
 	return BoolProgram{
-		script: script,
+		source: expression,
 	}, nil
 }
 
 func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
-	if prog.script == nil {
+	if prog.source == "" {
 		return true, nil
 	}
+	script := tengo.NewScript([]byte(prog.source))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 
 	for k, v := range params {
-		if err := prog.script.Add(k, v); err != nil {
+		if err := script.Add(k, v); err != nil {
 			return false, err
 		}
 	}
-	compiled, err := prog.script.RunContext(context.Background())
+	compiled, err := script.RunContext(context.Background())
 	if err != nil {
 		return false, err
 	}
