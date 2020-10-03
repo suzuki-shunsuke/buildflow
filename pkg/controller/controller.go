@@ -12,14 +12,12 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	gh "github.com/suzuki-shunsuke/buildflow/pkg/github"
-	"github.com/suzuki-shunsuke/buildflow/pkg/util"
 	"github.com/suzuki-shunsuke/go-dataeq/dataeq"
 )
 
 type Params struct {
 	PR        interface{}
 	Files     interface{}
-	Util      map[string]interface{}
 	Phases    map[string]ParamsPhase
 	Task      Task
 	PhaseName string
@@ -37,7 +35,7 @@ type ParamsPhase struct {
 }
 
 func (phase ParamsPhase) ToTemplate() map[string]interface{} {
-	tasks := make([]map[string]interface{}, len(phase.Tasks))
+	tasks := make([]interface{}, len(phase.Tasks))
 	for i, task := range phase.Tasks {
 		tasks[i] = task.ToTemplate()
 	}
@@ -59,7 +57,7 @@ func (task Task) ToTemplate() map[string]interface{} {
 		"CombinedOutput": task.Result.Command.CombinedOutput,
 		"FileText":       task.Result.File.Text,
 		"Meta":           task.Config.Meta,
-		"Outputs":        task.Result.Output,
+		"Output":         task.Result.Output,
 	}
 }
 
@@ -83,10 +81,10 @@ func (params Params) ToTemplate() map[string]interface{} {
 		"Meta": params.Meta,
 	}
 
-	var tasks []map[string]interface{}
+	var tasks []interface{}
 	if params.PhaseName != "" {
 		pTasks := params.Phases[params.PhaseName].Tasks
-		tasks = make([]map[string]interface{}, len(pTasks))
+		tasks = make([]interface{}, len(pTasks))
 		for i, task := range pTasks {
 			tasks[i] = task.ToTemplate()
 		}
@@ -99,7 +97,6 @@ func (params Params) ToTemplate() map[string]interface{} {
 
 func (params Params) ToExpr() map[string]interface{} {
 	a := params.ToTemplate()
-	a["Util"] = params.Util
 	return a
 }
 
@@ -172,7 +169,6 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 
 func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
 	params := Params{
-		Util:   util.GetUtil(),
 		Meta:   ctrl.Config.Meta,
 		Phases: make(map[string]ParamsPhase, len(ctrl.Config.Phases)),
 	}
@@ -240,6 +236,9 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 
 	if f, err := phaseCfg.Condition.Skip.Match(params.ToExpr()); err != nil {
 		phaseParams.Error = err
+		logrus.WithFields(logrus.Fields{
+			"phase_name": phaseCfg.Name,
+		}).WithError(err).Error(`failed to evaluate the phase's skip condition`)
 		return phaseParams, nil
 	} else if f {
 		phaseParams.Status = domain.ResultSkipped

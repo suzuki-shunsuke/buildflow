@@ -21,22 +21,12 @@ type Task struct {
 	Item               Item `yaml:"-"`
 	CompiledItems      Items
 	Meta               map[string]interface{}
-	Outputs            []Output
+	Output             Output
 }
 
 type Dependency struct {
 	Names   []string
 	Program expr.BoolProgram
-}
-
-type Items struct {
-	Items   interface{}
-	Program expr.Program
-}
-
-type Item struct {
-	Key   interface{}
-	Value interface{}
 }
 
 func (task *Task) Set() error {

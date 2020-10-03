@@ -13,7 +13,7 @@ type Result struct {
 	// skipped
 	// cancelled
 	Status  string
-	Output  map[string]interface{}
+	Output  interface{}
 	Time    Time
 	Type    string
 	Command CommandResult

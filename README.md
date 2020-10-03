@@ -178,15 +178,17 @@ phases:
 ```
 
 The task `bar` isn't run because the condition `when` is `false`.
-In the field `when`, we can use the expression of [antonmedv/expr](https://github.com/antonmedv/expr), which is the Go's third party library for the expression evaluation engine.
+The type of `when` should be either boolean or [tengo](https://github.com/d5/tengo) script.
+If `when` is a tengo script, the variable `result` should be defined and be boolean.
 
 ex.
 
 ```yaml
-    when: "3 > 1"
+    when: |
+      result := 3 > 1
 ```
 
-We can refer to the other task result and the pull request meta information in the expression as the variables.
+We can refer to the other task result and the pull request meta information in tengo scripts as the variables.
 
 For the detail, please see [Configuraiton variables](#configuration-variables).
 
@@ -206,7 +208,9 @@ phases:
       command: echo bar
     dependency:
     - foo
-    when: Tasks[0].FileText contains "dist"
+    when: |
+      text := import("text")
+      result := text.contains(Task[0].FileText, "dist")
 ```
 
 ### Refer to the pull request meta information in the configuration
@@ -249,7 +253,7 @@ On the CI service such as CircleCI and GitHub Actions, `buildflow` gets the abov
 In the following example, the task is run only when the pull request author is `octocat`.
 
 ```yaml
-    when: PR.owner == "octocat"
+    when: result := PR.owner == "octocat"
 ```
 
 ### Dynamic tasks
@@ -268,11 +272,12 @@ We can define tasks with a loop dynamically.
     - bar
 ```
 
-As the field `items`, we can use a list or a string which is an expression of [antonmedv/expr](https://github.com/antonmedv/expr).
+As the field `items`, we can use a list or a tengo script.
+If `items` is a tengo script, the variable `result` should be defined and be a list.
 
 ```yaml
     items: |
-      PR.labels
+      result := PR.labels
 ```
 
 ### Define multiple phases
@@ -349,19 +354,19 @@ repo: buildflow
 parallelism: 1
 # The meta attributes of the build.
 # You can use this field freely.
-# You can refer to this field in expressions and text/template.
+# You can refer to this field in tengo scripts and text/template.
 meta:
   service: foo
 # The build condition
 condtion:
   # When the skip is true, the build is skipped.
-  # The value should be true or false or an expression of antonmedv/expr.
-  # If this is an expression, the evaluation result should be true or false.
+  # The value should be true or false or a tengo script.
+  # If this is a tengo, the variable "result" should be defined and the type should be boolean.
   # The default is false.
   skip: false
   # When the fail is true, the build fails, which means the exit code of `buildflow run` isn't 0.
-  # The value should be true or false or an expression of antonmedv/expr.
-  # If this is an expression, the evaluation result should be true or false.
+  # The value should be true or false or a tengo script.
+  # If this is a tengo, the variable "result" should be defined and the type should be boolean.
   # By default `fail` is false if any phases failed.
   fail: false
 # The list of phases.
@@ -371,7 +376,7 @@ phases:
 - name: init
   # The meta attributes of the phase.
   # You can use this field freely.
-  # You can refer to this field in expressions and text/template.
+  # You can refer to this field in tengo scripts and text/template.
   meta:
     service: foo
   # the list of tasks.
@@ -394,33 +399,36 @@ phases:
         token: "{{ .Task.Name }}"
     # The condition whether the task is run.
     # The default is true.
-    # The value should be true or false or a string which is an expression of antonmedv/expr.
+    # The value should be true or false or a tengo script.
+    # If this is a tengo, the variable "result" should be defined and the type should be boolean.
     when: true
-    # The task names which this task depends on or an expression of antonmedv/expr.
-    # If `when` is an expression, the evaluation result should be true or false.
+    # The task names which this task depends on or a tengo script.
+    # If `when` is a tengo script, the variable "result" should be defined and the type should be boolean.
     # This task would be run after the dependent tasks are finished.
-    # If the value is an expression, this task isn't run until the evaluation result becomes true.
+    # If the value is a tengo script, this task isn't run until the evaluation result becomes true.
     # Whether this task can be run is evaluated everytime a running task is finished.
     # The default is no dependency.
     dependency:
     - bar
     # The dynamic tasks.
-    # items should be a list or a map or an expression of antonmedv/expr.
-    # If items is an expression, the evaluation result should be a list or a map.
+    # items should be a list or a map or a tengo script.
+    # If items is a tengo script, the variable "result" should be defined and the type should be a list or a map.
     items:
     - 1
     - 2
     # The meta attributes of the task.
     # You can use this field freely.
-    # You can refer to this field in expressions and text/template.
+    # You can refer to this field in tengo scripts and text/template.
     meta:
       service: foo
-    # task's outputs.
+    # a tengo script which represents task's output.
     # This is useful to format task's result for subsequent tasks.
-    outputs:
-    - name: foo
-      # value is an expression of antonmedv/expr.
-      value: Util.String.Split(Util.String.TrimSpace(Task.Stdout), "\n")
+    # The variable "result" should be defined.
+    output: |
+      text := import("text")
+      result := {
+        foo: text.split(text.trim_space(Task.Stdout), "\n"),
+      }
   - name: bar
     # read a file.
     # This is used to refer to the content of the file in subsequent tasks.
@@ -429,20 +437,20 @@ phases:
       path: foo.txt
   condition:
     # When the skip is true, the phase is skipped.
-    # The value should be true or false or an expression of antonmedv/expr.
-    # If this is an expression, the evaluation result should be true or false.
+    # The value should be true or false or a tengo script.
+    # If this is a tengo, the variable "result" should be defined and the type should be boolean.
     # The default is false.
     skip: false
     # `exit` is evaluated when the phase is finished.
     # If the `exit` is true, the build is finished and subsequent phases aren't run.
-    # The value should be true or false or an expression of antonmedv/expr.
-    # If this is an expression, the evaluation result should be true or false.
+    # The value should be true or false or a tengo script.
+    # If this is a tengo, the variable "result" should be defined and the type should be boolean.
     # The default is false.
     exit: false
     # `fail` is evaluated when the phase is finished.
     # If the `fail` is true, the phase fails.
-    # The value should be true or false or an expression of antonmedv/expr.
-    # If this is an expression, the evaluation result should be true or false.
+    # The value should be true or false or a tengo script.
+    # If this is a tengo, the variable "result" should be defined and the type should be boolean.
     # By default `fail` is false if any tasks failed.
     fail: false
 ```
@@ -459,7 +467,6 @@ phases:
 - Item
   - Key
   - Value
-- Util: utility functions # Note that Util can't used at template. Util can be used at expression
 
 #### Example
 
@@ -499,16 +506,6 @@ Task: # the current task
 Item: # The item of the dynamic tasks.
   Key: 0
   Value: zoo
-Util:
-  LabelNames: func(PR.labels) []string: return a list of pull request label names
-  Env: https://golang.org/pkg/os/#Getenv
-  String:
-    Split: https://golang.org/pkg/strings/#Split
-    TrimSpace: https://golang.org/pkg/strings/#TrimSpace
-  Map:
-    Keys: func(map[string]interface{}) []string: return a list of keys of a map
-    Values: func(map[string]interface{}) []interface{}: return a list of values of a map
-  GetTaskByName: func(tasks, name) task: get a task by task name
 ```
 
 ### Custom Functions of template

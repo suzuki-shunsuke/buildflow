@@ -1,61 +1,79 @@
 package expr
 
 import (
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
+	"context"
+	"errors"
+
+	"github.com/d5/tengo/v2"
+	"github.com/d5/tengo/v2/stdlib"
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 )
 
 type Program struct {
-	prog *vm.Program
+	source string
 }
 
 func New(expression string) (Program, error) {
-	if expression == "" {
-		return Program{}, nil
-	}
-	prog, err := expr.Compile(expression)
-	if err != nil {
-		return Program{}, err
-	}
 	return Program{
-		prog: prog,
+		source: expression,
 	}, nil
 }
 
-func (prog Program) Run(params interface{}) (interface{}, error) {
-	if prog.prog == nil {
+func (prog Program) Run(params map[string]interface{}) (interface{}, error) {
+	if prog.source == "" {
 		return nil, nil
 	}
-	return expr.Run(prog.prog, params)
+	script := tengo.NewScript([]byte(prog.source))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+	for k, v := range params {
+		if err := script.Add(k, v); err != nil {
+			return nil, err
+		}
+	}
+	compiled, err := script.RunContext(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	if !compiled.IsDefined(constant.Result) {
+		return nil, constant.ErrNoBoolVariable
+	}
+	v := compiled.Get(constant.Result)
+	return v.Value(), nil
 }
 
 type BoolProgram struct {
-	prog *vm.Program
+	source string
 }
 
 func NewBool(expression string) (BoolProgram, error) {
-	if expression == "" {
-		return BoolProgram{}, nil
-	}
-	prog, err := expr.Compile(expression, expr.AsBool())
-	if err != nil {
-		return BoolProgram{}, err
-	}
 	return BoolProgram{
-		prog: prog,
+		source: expression,
 	}, nil
 }
 
-func (prog BoolProgram) Match(params interface{}) (bool, error) {
-	if prog.prog == nil {
+func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
+	if prog.source == "" {
 		return true, nil
 	}
-	output, err := expr.Run(prog.prog, params)
+	script := tengo.NewScript([]byte(prog.source))
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+
+	for k, v := range params {
+		if err := script.Add(k, v); err != nil {
+			return false, err
+		}
+	}
+	compiled, err := script.RunContext(context.Background())
 	if err != nil {
 		return false, err
 	}
-	if f, ok := output.(bool); !ok || !f {
-		return false, nil
+	if !compiled.IsDefined(constant.Result) {
+		return false, constant.ErrNoBoolVariable
 	}
-	return true, nil
+	v := compiled.Get(constant.Result)
+	if t := v.ValueType(); t != "bool" {
+		return false, errors.New(`the type of the variable "result" should be bool, but actually ` + t)
+	}
+	return v.Bool(), nil
 }

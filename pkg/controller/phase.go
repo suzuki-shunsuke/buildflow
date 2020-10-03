@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/locale"
@@ -26,22 +27,32 @@ type Phase struct {
 }
 
 type EventQueue struct {
-	Queue chan struct{}
-	once  sync.Once
+	Queue  chan struct{}
+	mutex  sync.RWMutex
+	closed bool
 }
 
 func (queue *EventQueue) Push() {
-	queue.Queue <- struct{}{}
+	queue.mutex.Lock()
+	if !queue.closed {
+		queue.Queue <- struct{}{}
+	}
+	queue.mutex.Unlock()
 }
 
 func (queue *EventQueue) Pop() {
+	queue.mutex.Lock()
 	<-queue.Queue
+	queue.mutex.Unlock()
 }
 
 func (queue *EventQueue) Close() {
-	queue.once.Do(func() {
+	queue.mutex.Lock()
+	if !queue.closed {
 		close(queue.Queue)
-	})
+		queue.closed = true
+	}
+	queue.mutex.Unlock()
 }
 
 type TaskQueue struct {
@@ -151,7 +162,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			phase.Set(idx, task)
-			return err
+			return fmt.Errorf("failed to evaluate the dependency: %w", err)
 		}
 		if !b {
 			isFinished = false
@@ -222,18 +233,20 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 			return
 		}
 		task.Result.Status = domain.TaskResultSucceeded
-		task.Result.Output = make(map[string]interface{}, len(task.Config.Outputs))
 		params.Task = task
-		for _, output := range task.Config.Outputs {
-			val, err := output.Prog.Run(params.ToExpr())
-			if err != nil {
-				task.Result.Status = domain.TaskResultFailed
-				task.Result.Error = err
-				log.Println(err)
-				return
-			}
-			task.Result.Output[output.Name] = val
+		phase.Set(idx, task)
+		output, err := task.Config.Output.Run(params.ToExpr())
+		if err != nil {
+			task.Result.Status = domain.TaskResultFailed
+			task.Result.Error = err
+			logrus.WithFields(logrus.Fields{
+				"phase_name": phase.Config.Name,
+				"task_name":  task.Config.Name.Text,
+				"task_index": idx,
+			}).WithError(err).Error("failed to run an output")
+			return
 		}
+		task.Result.Output = output
 	}(idx, task, params)
 	return nil
 }
@@ -241,7 +254,10 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 func (phase *Phase) Run(ctx context.Context, params Params) error {
 	for i, task := range phase.GetAll() {
 		if err := phase.RunTask(ctx, i, task, params); err != nil {
-			fmt.Fprintln(phase.Stderr, "task: "+task.Config.Name.Text, err)
+			logrus.WithFields(logrus.Fields{
+				"task_name":  task.Config.Name.Text,
+				"phase_name": phase.Config.Name,
+			}).WithError(err).Error("failed to run a task")
 		}
 	}
 	allFinished := true
