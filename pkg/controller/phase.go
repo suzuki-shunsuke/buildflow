@@ -235,7 +235,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		task.Result.Status = domain.TaskResultSucceeded
 		params.Task = task
 		phase.Set(idx, task)
-		output, err := task.Config.Output.Run(params.ToTemplate())
+		output, err := task.Config.Output.Run(params.ToExpr())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			task.Result.Error = err
