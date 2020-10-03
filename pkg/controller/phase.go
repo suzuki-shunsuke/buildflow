@@ -162,7 +162,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			phase.Set(idx, task)
-			return err
+			return fmt.Errorf("failed to evaluate the dependency: %w", err)
 		}
 		if !b {
 			isFinished = false
@@ -254,7 +254,10 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 func (phase *Phase) Run(ctx context.Context, params Params) error {
 	for i, task := range phase.GetAll() {
 		if err := phase.RunTask(ctx, i, task, params); err != nil {
-			fmt.Fprintln(phase.Stderr, "task: "+task.Config.Name.Text, err)
+			logrus.WithFields(logrus.Fields{
+				"task_name":  task.Config.Name.Text,
+				"phase_name": phase.Config.Name,
+			}).WithError(err).Error("failed to run a task")
 		}
 	}
 	allFinished := true
