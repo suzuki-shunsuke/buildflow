@@ -4,15 +4,15 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 )
 
-type Output struct {
+type Script struct {
 	Prog expr.Program
 }
 
-func (output Output) Run(params map[string]interface{}) (interface{}, error) {
-	return output.Prog.Run(params)
+func (script Script) Run(params map[string]interface{}) (interface{}, error) {
+	return script.Prog.Run(params)
 }
 
-func (output *Output) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (script *Script) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	val := ""
 	if err := unmarshal(&val); err != nil {
 		return err
@@ -21,6 +21,6 @@ func (output *Output) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		return err
 	}
-	output.Prog = prog
+	script.Prog = prog
 	return nil
 }
