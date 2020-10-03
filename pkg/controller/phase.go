@@ -12,7 +12,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
-	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/locale"
 )
 
@@ -137,7 +137,7 @@ func (phase ParamsPhase) outputResult(stderr io.Writer, name string) {
 }
 
 func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Params) error { //nolint:funlen,gocognit
-	if task.Result.Status != domain.TaskResultQueue {
+	if task.Result.Status != constant.Queue {
 		return nil
 	}
 
@@ -148,7 +148,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		for _, dependOn := range task.Config.CompiledDependency.Names {
 			dependencies := phase.Get(dependOn)
 			if len(dependencies) == 0 {
-				task.Result.Status = domain.TaskResultFailed
+				task.Result.Status = constant.Failed
 				phase.Set(idx, task)
 				return errors.New("invalid dependency. the task isn't found: " + dependOn)
 			}
@@ -160,7 +160,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		}
 		b, err := task.Config.CompiledDependency.Program.Match(params.ToExpr())
 		if err != nil {
-			task.Result.Status = domain.TaskResultFailed
+			task.Result.Status = constant.Failed
 			phase.Set(idx, task)
 			return fmt.Errorf("failed to evaluate the dependency: %w", err)
 		}
@@ -176,23 +176,23 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	f, err := task.Config.When.Match(params.ToExpr())
 	if err != nil {
-		task.Result.Status = domain.TaskResultFailed
+		task.Result.Status = constant.Failed
 		phase.Set(idx, task)
 		return err
 	}
 	if !f {
-		task.Result.Status = domain.TaskResultSkipped
+		task.Result.Status = constant.Skipped
 		phase.Set(idx, task)
 		return nil
 	}
 
-	task.Result.Status = domain.TaskResultRunning
+	task.Result.Status = constant.Running
 	phase.Set(idx, task)
 
 	// evaluate input and add params
 	input, err := task.Config.Input.Run(params.ToExpr())
 	if err != nil {
-		task.Result.Status = domain.TaskResultFailed
+		task.Result.Status = constant.Failed
 		task.Result.Error = err
 		logrus.WithFields(logrus.Fields{
 			"phase_name": phase.Config.Name,
@@ -206,10 +206,10 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 	phase.Set(idx, task)
 
 	switch task.Config.Type {
-	case domain.TaskTypeCommand:
+	case constant.Command:
 		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
 		if err != nil {
-			task.Result.Status = domain.TaskResultFailed
+			task.Result.Status = constant.Failed
 			phase.Set(idx, task)
 			return err
 		}
@@ -217,16 +217,16 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 
 		m, err := renderEnvs(task.Config.Command.Env, params)
 		if err != nil {
-			task.Result.Status = domain.TaskResultFailed
+			task.Result.Status = constant.Failed
 			phase.Set(idx, task)
 			return err
 		}
 		task.Config.Command.Env.Compiled = m
 
-	case domain.TaskTypeFile:
+	case constant.File:
 		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
 		if err != nil {
-			task.Result.Status = domain.TaskResultFailed
+			task.Result.Status = constant.Failed
 			phase.Set(idx, task)
 			return err
 		}
@@ -243,17 +243,17 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		phase.TaskQueue.pop()
 		task.Result = result
 		if err != nil {
-			task.Result.Status = domain.TaskResultFailed
+			task.Result.Status = constant.Failed
 			task.Result.Error = err
 			log.Println(err)
 			return
 		}
-		task.Result.Status = domain.TaskResultSucceeded
+		task.Result.Status = constant.Succeeded
 		params.Task = task
 		phase.Set(idx, task)
 		output, err := task.Config.Output.Run(params.ToExpr())
 		if err != nil {
-			task.Result.Status = domain.TaskResultFailed
+			task.Result.Status = constant.Failed
 			task.Result.Error = err
 			logrus.WithFields(logrus.Fields{
 				"phase_name": phase.Config.Name,
@@ -282,11 +282,11 @@ func (phase *Phase) Run(ctx context.Context, params Params) error {
 	for _, task := range phase.GetAll() {
 		if !task.Result.IsFinished() {
 			allFinished = false
-			if task.Result.Status == domain.TaskResultRunning {
+			if task.Result.Status == constant.Running {
 				noRunning = false
 				break
 			}
-			if task.Result.Status == domain.TaskResultQueue {
+			if task.Result.Status == constant.Queue {
 				queuedTasks = append(queuedTasks, task.Config.Name.Text)
 			}
 		}
