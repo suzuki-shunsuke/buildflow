@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-github/v32/github"
 	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	gh "github.com/suzuki-shunsuke/buildflow/pkg/github"
@@ -241,7 +242,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 		}).WithError(err).Error(`failed to evaluate the phase's skip condition`)
 		return phaseParams, nil
 	} else if f {
-		phaseParams.Status = domain.ResultSkipped
+		phaseParams.Status = constant.Skipped
 		return phaseParams, nil
 	}
 
@@ -278,9 +279,9 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 		phaseParams.Error = err
 		return phaseParams, nil
 	} else if f {
-		phaseParams.Status = domain.ResultFailed
+		phaseParams.Status = constant.Failed
 	} else {
-		phaseParams.Status = domain.ResultSucceeded
+		phaseParams.Status = constant.Succeeded
 	}
 
 	if f, err := phaseCfg.Condition.Exit.Match(params.ToExpr()); err != nil {
@@ -323,7 +324,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	for i, phaseCfg := range ctrl.Config.Phases {
 		phaseParams, err := ctrl.runPhase(ctx, params, i)
 		if phaseParams.Error != nil {
-			phaseParams.Status = domain.ResultFailed
+			phaseParams.Status = constant.Failed
 		}
 		phaseParams.outputResult(ctrl.Stderr, phaseCfg.Name)
 		params.Phases[phaseCfg.Name] = phaseParams
