@@ -83,7 +83,7 @@ func Expand(task config.Task, params Params) ([]config.Task, error) {
 		return []config.Task{t}, nil
 	}
 	if _, ok := task.Items.(string); ok {
-		items, err := task.CompiledItems.Program.Run(params.ToExpr())
+		items, err := task.CompiledItems.Run(params.ToExpr())
 		if err != nil {
 			return nil, err
 		}

@@ -69,10 +69,10 @@ func setDefault(cfg Config) Config {
 	if !cfg.Condition.Fail.Initialized {
 		// b, err := expr.NewBool(`any(Util.Map.Values(Phases), {.Status == "failed"})`)
 		b, err := expr.NewBool(`
-answer := false
+result := false
 for phase in Phases {
   if phase.Status == "failed" {
-    answer = true
+    result = true
 	}
 }`)
 		if err != nil {
@@ -92,10 +92,10 @@ for phase in Phases {
 		if !phase.Condition.Fail.Initialized {
 			// b, err := expr.NewBool(`any(Tasks, {.Status == "failed"})`)
 			b, err := expr.NewBool(`
-answer := false
+result := false
 for task in Tasks {
   if task.Status == "failed" {
-    answer = true
+    result = true
 	}
 }`)
 			if err != nil {

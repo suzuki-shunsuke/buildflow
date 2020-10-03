@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/locale"
@@ -224,14 +225,18 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		task.Result.Status = domain.TaskResultSucceeded
 		params.Task = task
 		phase.Set(idx, task)
-		outputs, err := task.Config.Output.Run(params.ToTemplate())
+		output, err := task.Config.Output.Run(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = domain.TaskResultFailed
 			task.Result.Error = err
-			log.Println(err)
+			logrus.WithFields(logrus.Fields{
+				"phase_name": phase.Config.Name,
+				"task_name":  task.Config.Name.Text,
+				"task_index": idx,
+			}).WithError(err).Error("failed to run an output")
 			return
 		}
-		task.Result.Output = outputs
+		task.Result.Output = output
 	}(idx, task, params)
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 )
 
 type Program struct {
@@ -25,7 +26,7 @@ func New(expression string) (Program, error) {
 	}, nil
 }
 
-func (prog Program) Run(params map[string]interface{}) (map[string]interface{}, error) {
+func (prog Program) Run(params map[string]interface{}) (interface{}, error) {
 	if prog.script == nil {
 		return nil, nil
 	}
@@ -38,13 +39,12 @@ func (prog Program) Run(params map[string]interface{}) (map[string]interface{}, 
 	if err != nil {
 		return nil, err
 	}
-	vars := compiled.GetAll()
-	m := make(map[string]interface{}, len(vars))
-	for _, v := range vars {
-		m[v.Name()] = v.Value()
-	}
 
-	return m, nil
+	if !compiled.IsDefined(constant.Result) {
+		return nil, constant.ErrNoBoolVariable
+	}
+	v := compiled.Get(constant.Result)
+	return v.Value(), nil
 }
 
 type BoolProgram struct {
@@ -64,8 +64,6 @@ func NewBool(expression string) (BoolProgram, error) {
 	}, nil
 }
 
-var ErrNoBoolVariable = errors.New(`the variable "answer" isn't defined`)
-
 func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
 	if prog.script == nil {
 		return true, nil
@@ -80,12 +78,12 @@ func (prog BoolProgram) Match(params map[string]interface{}) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if !compiled.IsDefined("answer") {
-		return false, ErrNoBoolVariable
+	if !compiled.IsDefined(constant.Result) {
+		return false, constant.ErrNoBoolVariable
 	}
-	v := compiled.Get("answer")
+	v := compiled.Get(constant.Result)
 	if t := v.ValueType(); t != "bool" {
-		return false, errors.New(`the type of the variable "answer" should be bool, but actually ` + t)
+		return false, errors.New(`the type of the variable "result" should be bool, but actually ` + t)
 	}
 	return v.Bool(), nil
 }

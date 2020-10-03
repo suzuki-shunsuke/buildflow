@@ -59,7 +59,7 @@ func (task Task) ToTemplate() map[string]interface{} {
 		"CombinedOutput": task.Result.Command.CombinedOutput,
 		"FileText":       task.Result.File.Text,
 		"Meta":           task.Config.Meta,
-		"Outputs":        task.Result.Output,
+		"Output":         task.Result.Output,
 	}
 }
 
@@ -240,6 +240,9 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 
 	if f, err := phaseCfg.Condition.Skip.Match(params.ToExpr()); err != nil {
 		phaseParams.Error = err
+		logrus.WithFields(logrus.Fields{
+			"phase_name": phaseCfg.Name,
+		}).WithError(err).Error(`failed to evaluate the phase's skip condition`)
 		return phaseParams, nil
 	} else if f {
 		phaseParams.Status = domain.ResultSkipped

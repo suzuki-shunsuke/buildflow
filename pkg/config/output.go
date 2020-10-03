@@ -8,7 +8,7 @@ type Output struct {
 	Prog expr.Program
 }
 
-func (output Output) Run(params map[string]interface{}) (map[string]interface{}, error) {
+func (output Output) Run(params map[string]interface{}) (interface{}, error) {
 	return output.Prog.Run(params)
 }
 

@@ -29,16 +29,6 @@ type Dependency struct {
 	Program expr.BoolProgram
 }
 
-type Items struct {
-	Items   interface{}
-	Program expr.Program
-}
-
-type Item struct {
-	Key   interface{}
-	Value interface{}
-}
-
 func (task *Task) Set() error {
 	if err := task.SetType(); err != nil {
 		return err
