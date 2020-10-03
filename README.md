@@ -383,6 +383,12 @@ phases:
   tasks:
   # The task name. The value is parsed by text/template.
   - name: foo
+    # a tengo script which represents task's input.
+    # The variable "result" should be defined.
+    input: |
+      result := {
+        foo: "foo"
+      }
     # Either `command` or `read_file` is required.
     command:
       # <shell> <shell_options>... <command> is run
@@ -392,7 +398,7 @@ phases:
       shell: /bin/sh
       shell_options:
       - -c
-      command: echo hello
+      command: echo {{.Task.Input.foo}}
       # environment variables
       # In the environment variable name and value text/template can be used
       env:
