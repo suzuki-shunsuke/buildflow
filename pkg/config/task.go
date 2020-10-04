@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 )
@@ -14,7 +15,8 @@ type Task struct {
 	Dependency         interface{}
 	CompiledDependency Dependency `yaml:"-"`
 	Command            Command
-	ReadFile           ReadFile `yaml:"read_file"`
+	ReadFile           ReadFile  `yaml:"read_file"`
+	WriteFile          WriteFile `yaml:"write_file"`
 	HTTP               HTTP
 	Timeout            execute.Timeout
 	Items              interface{}
@@ -28,6 +30,11 @@ type Task struct {
 type Dependency struct {
 	Names   []string
 	Program expr.BoolProgram
+}
+
+type WriteFile struct {
+	Path     Template
+	Template Template
 }
 
 func (task *Task) Set() error {
@@ -81,15 +88,19 @@ func (task *Task) CompileDependency() error {
 
 func (task *Task) SetType() error {
 	if task.Command.Command.Text != "" {
-		task.Type = "command"
+		task.Type = constant.Command
 		return nil
 	}
 	if task.ReadFile.Path.Text != "" {
-		task.Type = "file"
+		task.Type = constant.ReadFile
+		return nil
+	}
+	if task.WriteFile.Path.Text != "" {
+		task.Type = constant.WriteFile
 		return nil
 	}
 	if task.HTTP.URL != "" {
-		task.Type = "http"
+		task.Type = constant.HTTP
 		return nil
 	}
 	return errors.New("task must be either command, file, and http")

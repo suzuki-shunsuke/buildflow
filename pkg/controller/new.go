@@ -17,6 +17,7 @@ type Controller struct {
 	Config     config.Config
 	Executor   Executor
 	FileReader FileReader
+	FileWriter FileWriter
 	Timer      Timer
 	Stdout     io.Writer
 	Stderr     io.Writer
@@ -32,6 +33,10 @@ type Timer interface {
 
 type FileReader interface {
 	Read(path string) (domain.FileResult, error)
+}
+
+type FileWriter interface {
+	Write(path, text string) (domain.FileResult, error)
 }
 
 type GitHub interface {

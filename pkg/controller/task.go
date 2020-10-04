@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/buildflow/pkg/config"
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 )
@@ -16,6 +17,7 @@ type Task struct {
 	Config     config.Task
 	Executor   Executor
 	FileReader FileReader
+	FileWriter FileWriter
 	Timer      Timer
 	Stdout     io.Writer
 	Stderr     io.Writer
@@ -37,27 +39,33 @@ func (task Task) runCommand(ctx context.Context) (domain.CommandResult, error) {
 	return result, err
 }
 
-func (task Task) Run(ctx context.Context) (domain.Result, error) {
-	startTime := task.Timer.Now()
+func (task Task) run(ctx context.Context) (domain.Result, error) {
 	switch task.Config.Type {
-	case "command":
+	case constant.Command:
 		cmdResult, err := task.runCommand(ctx)
 		return domain.Result{
 			Command: cmdResult,
-			Time: domain.Time{
-				Start: startTime,
-				End:   task.Timer.Now(),
-			},
 		}, err
-	case "file":
+	case constant.ReadFile:
 		fileResult, err := task.FileReader.Read(task.Config.ReadFile.Path.Text)
 		return domain.Result{
 			File: fileResult,
-			Time: domain.Time{
-				Start: startTime,
-				End:   task.Timer.Now(),
-			},
+		}, err
+	case constant.WriteFile:
+		// TODO append a new line
+		fileResult, err := task.FileWriter.Write(
+			task.Config.WriteFile.Path.Text, task.Config.WriteFile.Template.Text)
+		return domain.Result{
+			File: fileResult,
 		}, err
 	}
 	return domain.Result{}, errors.New("invalid task type: " + task.Config.Type + ", task name: " + task.Config.Name.Text)
+}
+
+func (task Task) Run(ctx context.Context) (domain.Result, error) {
+	startTime := task.Timer.Now()
+	result, err := task.run(ctx)
+	result.Time.Start = startTime
+	result.Time.End = task.Timer.Now()
+	return result, err
 }
