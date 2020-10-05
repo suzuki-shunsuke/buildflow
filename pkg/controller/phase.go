@@ -260,7 +260,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 			phase.EventQueue.Push()
 		}()
 		phase.TaskQueue.push()
-		result, err := task.Run(ctx)
+		result, err := task.Run(ctx, wd)
 		phase.TaskQueue.pop()
 		task.Result = result
 		if err != nil {
