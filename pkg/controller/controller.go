@@ -221,7 +221,7 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 	return params, nil
 }
 
-func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (ParamsPhase, error) { //nolint:funlen
+func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd string) (ParamsPhase, error) { //nolint:funlen
 	phaseCfg := ctrl.Config.Phases[idx]
 	params.PhaseName = phaseCfg.Name
 	tasksCfg := []config.Task{}
@@ -271,7 +271,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 		fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
 		fmt.Fprintln(phase.Stderr, "==============")
 		for range phase.EventQueue.Queue {
-			if err := phase.Run(ctx, params); err != nil {
+			if err := phase.Run(ctx, params, wd); err != nil {
 				phase.EventQueue.Close()
 				log.Println(err)
 			}
@@ -304,7 +304,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int) (Pa
 
 var ErrBuildFail = errors.New("build failed")
 
-func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
+func (ctrl Controller) Run(ctx context.Context, wd string) error { //nolint:funlen,gocognit
 	pr, err := ctrl.getPR(ctx)
 	if err != nil {
 		return err
@@ -330,7 +330,7 @@ func (ctrl Controller) Run(ctx context.Context) error { //nolint:funlen,gocognit
 	}
 
 	for i, phaseCfg := range ctrl.Config.Phases {
-		phaseParams, err := ctrl.runPhase(ctx, params, i)
+		phaseParams, err := ctrl.runPhase(ctx, params, i, wd)
 		if phaseParams.Error != nil {
 			phaseParams.Status = constant.Failed
 		}

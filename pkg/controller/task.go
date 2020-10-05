@@ -23,26 +23,27 @@ type Task struct {
 	Stderr     io.Writer
 }
 
-func (task Task) runCommand(ctx context.Context) (domain.CommandResult, error) {
+func (task Task) runCommand(ctx context.Context, wd string) (domain.CommandResult, error) {
 	if task.Config.Timeout.Duration == 0 {
 		task.Config.Timeout.Duration = 1 * time.Hour
 	}
 	result, err := task.Executor.Run(ctx, execute.Params{
-		Cmd:      task.Config.Command.Shell,
-		Args:     append(task.Config.Command.ShellOpts, task.Config.Command.Command.Text),
-		Timeout:  task.Config.Timeout,
-		TaskName: task.Config.Name.Text,
-		Stdout:   task.Stdout,
-		Stderr:   task.Stderr,
-		Envs:     task.Config.Command.Env.Compiled,
+		Cmd:        task.Config.Command.Shell,
+		Args:       append(task.Config.Command.ShellOpts, task.Config.Command.Command.Text),
+		Timeout:    task.Config.Timeout,
+		TaskName:   task.Config.Name.Text,
+		Stdout:     task.Stdout,
+		Stderr:     task.Stderr,
+		WorkingDir: wd,
+		Envs:       task.Config.Command.Env.Compiled,
 	})
 	return result, err
 }
 
-func (task Task) run(ctx context.Context) (domain.Result, error) {
+func (task Task) run(ctx context.Context, wd string) (domain.Result, error) {
 	switch task.Config.Type {
 	case constant.Command:
-		cmdResult, err := task.runCommand(ctx)
+		cmdResult, err := task.runCommand(ctx, wd)
 		return domain.Result{
 			Command: cmdResult,
 		}, err
@@ -62,9 +63,9 @@ func (task Task) run(ctx context.Context) (domain.Result, error) {
 	return domain.Result{}, errors.New("invalid task type: " + task.Config.Type + ", task name: " + task.Config.Name.Text)
 }
 
-func (task Task) Run(ctx context.Context) (domain.Result, error) {
+func (task Task) Run(ctx context.Context, wd string) (domain.Result, error) {
 	startTime := task.Timer.Now()
-	result, err := task.run(ctx)
+	result, err := task.run(ctx, wd)
 	result.Time.Start = startTime
 	result.Time.End = task.Timer.Now()
 	return result, err
