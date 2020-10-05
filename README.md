@@ -389,7 +389,7 @@ phases:
       result := {
         foo: "foo"
       }
-    # Either `command` or `read_file` is required.
+    # Either `command` or `read_file` or `write_file` is required.
     command:
       # <shell> <shell_options>... <command> is run
       # ex. /bin/sh -c "echo hello"
@@ -441,6 +441,14 @@ phases:
     read_file:
       # The file path to be read
       path: foo.txt
+  - name: zoo
+    # write a file.
+    write_file:
+      # The file path to be written
+      path: foo.txt
+      # The template of the file content.
+      template: |
+        {{ .Task.Name }}
   condition:
     # When the skip is true, the phase is skipped.
     # The value should be true or false or a tengo script.

@@ -3,9 +3,11 @@ package constant
 import "errors"
 
 const (
-	Command = "command"
-	File    = "file"
-	HTTP    = "http"
+	Command   = "command"
+	File      = "file"
+	ReadFile  = "read_file"
+	WriteFile = "write_file"
+	HTTP      = "http"
 
 	Failed    = "failed"
 	Succeeded = "succeeded"

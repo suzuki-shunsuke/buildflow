@@ -77,6 +77,7 @@ func (runner Runner) action(c *cli.Context) error {
 		Stderr:     os.Stdout,
 		Timer:      timer{},
 		FileReader: file.Reader{},
+		FileWriter: file.Writer{},
 	}
 
 	return ctrl.Run(c.Context)

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -52,7 +53,23 @@ type CommandResult struct {
 }
 
 type FileResult struct {
-	Text string
+	Text    string
+	Path    string
+	ModTime time.Time
+	Size    int64
+	Mode    os.FileMode
+	IsDir   bool
+}
+
+func (fileResult FileResult) ToTemplate() map[string]interface{} {
+	return map[string]interface{}{
+		"Text":    fileResult.Text,
+		"Mode":    fileResult.Mode.String(),
+		"Path":    fileResult.Path,
+		"ModTime": fileResult.ModTime,
+		"Size":    fileResult.Size,
+		"IsDir":   fileResult.IsDir,
+	}
 }
 
 type HTTPResult struct {

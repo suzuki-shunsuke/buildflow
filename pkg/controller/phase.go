@@ -223,7 +223,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		}
 		task.Config.Command.Env.Compiled = m
 
-	case constant.File:
+	case constant.ReadFile:
 		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = constant.Failed
@@ -231,6 +231,21 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 			return err
 		}
 		task.Config.ReadFile.Path = p
+	case constant.WriteFile:
+		p, err := task.Config.WriteFile.Path.New(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = constant.Failed
+			phase.Set(idx, task)
+			return err
+		}
+		task.Config.WriteFile.Path = p
+		tpl, err := task.Config.WriteFile.Template.New(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = constant.Failed
+			phase.Set(idx, task)
+			return err
+		}
+		task.Config.WriteFile.Template = tpl
 	}
 
 	go func(idx int, task Task, params Params) {

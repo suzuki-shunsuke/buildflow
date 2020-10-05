@@ -49,18 +49,25 @@ func (phase ParamsPhase) ToTemplate() map[string]interface{} {
 }
 
 func (task Task) ToTemplate() map[string]interface{} {
-	return map[string]interface{}{
-		"Name":           task.Config.Name.Text,
-		"Status":         task.Result.Status,
-		"ExitCode":       task.Result.Command.ExitCode,
-		"Stdout":         task.Result.Command.Stdout,
-		"Stderr":         task.Result.Command.Stderr,
-		"CombinedOutput": task.Result.Command.CombinedOutput,
-		"FileText":       task.Result.File.Text,
-		"Meta":           task.Config.Meta,
-		"Output":         task.Result.Output,
-		"Input":          task.Result.Input,
+	m := map[string]interface{}{
+		"Name":   task.Config.Name.Text,
+		"Type":   task.Config.Type,
+		"Status": task.Result.Status,
+		"Meta":   task.Config.Meta,
+		"Output": task.Result.Output,
+		"Input":  task.Result.Input,
 	}
+	switch task.Config.Type {
+	case constant.Command:
+		m["ExitCode"] = task.Result.Command.ExitCode
+		m["Stdout"] = task.Result.Command.Stdout
+		m["Stderr"] = task.Result.Command.Stderr
+		m["CombinedOutput"] = task.Result.Command.CombinedOutput
+	case constant.HTTP:
+	case constant.ReadFile, constant.WriteFile:
+		m["File"] = task.Result.File.ToTemplate()
+	}
+	return m
 }
 
 func (params Params) ToTemplate() map[string]interface{} {
@@ -114,6 +121,7 @@ func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint
 			Stderr:     execute.NewWriter(ctrl.Stderr, taskCfg.Name.Text),
 			Timer:      ctrl.Timer,
 			FileReader: ctrl.FileReader,
+			FileWriter: ctrl.FileWriter,
 		}
 		tasks[i] = task
 	}
