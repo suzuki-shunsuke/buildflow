@@ -29,14 +29,15 @@ func (reader Reader) read(p string) (Config, error) {
 
 var ErrNotFound error = errors.New("configuration file isn't found")
 
-func (reader Reader) FindAndRead(cfgPath, wd string) (Config, error) {
+func (reader Reader) FindAndRead(cfgPath, wd string) (Config, string, error) {
 	cfg := Config{}
 	if cfgPath == "" {
 		p := findconfig.Find(wd, reader.ExistFile, ".buildflow.yml", ".buildflow.yaml")
 		if p == "" {
-			return cfg, ErrNotFound
+			return cfg, "", ErrNotFound
 		}
 		cfgPath = p
 	}
-	return reader.read(cfgPath)
+	cfg, err := reader.read(cfgPath)
+	return cfg, cfgPath, err
 }

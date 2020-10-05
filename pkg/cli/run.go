@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -38,7 +39,7 @@ func (runner Runner) action(c *cli.Context) error {
 	reader := config.Reader{
 		ExistFile: findconfig.Exist,
 	}
-	cfg, err := reader.FindAndRead(c.String("config"), wd)
+	cfg, cfgPath, err := reader.FindAndRead(c.String("config"), wd)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func (runner Runner) action(c *cli.Context) error {
 		FileWriter: file.Writer{},
 	}
 
-	return ctrl.Run(c.Context)
+	return ctrl.Run(c.Context, filepath.Dir(cfgPath))
 }
 
 type timer struct{}
