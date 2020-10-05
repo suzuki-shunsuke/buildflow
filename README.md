@@ -398,6 +398,7 @@ phases:
       shell: /bin/sh
       shell_options:
       - -c
+      # the command is executed where the configuration file exists.
       command: echo {{.Task.Input.foo}}
       # environment variables
       # In the environment variable name and value text/template can be used
@@ -440,11 +441,13 @@ phases:
     # This is used to refer to the content of the file in subsequent tasks.
     read_file:
       # The file path to be read
+      # If the path is the relative path, this is treated as the relative path from the directory where the configuration file exists.
       path: foo.txt
   - name: zoo
     # write a file.
     write_file:
       # The file path to be written
+      # If the path is the relative path, this is treated as the relative path from the directory where the configuration file exists.
       path: foo.txt
       # The template of the file content.
       template: |
@@ -579,6 +582,10 @@ OPTIONS:
    --config value, -c value  configuration file path
    --help, -h                show help (default: false)
 ```
+
+## Where to run the task
+
+The task is run at not the current directory (`$PWD`) but the directory where the configuration file exists.
 
 ## LICENSE
 
