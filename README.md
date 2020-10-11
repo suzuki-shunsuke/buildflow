@@ -457,11 +457,19 @@ phases:
       # The template of the file content.
       template: |
         {{ .Task.Name }}
-  - name: zoo
+  - name: yoo
     command:
       # read a command template from a file
       # The content is parsed with text/template
-      command_file: zoo.txt
+      command_file: yoo.txt
+  - name: write_file external file
+    write_file:
+      # The file path to be written
+      # If the path is the relative path, this is treated as the relative path from the directory where the configuration file exists.
+      path: foo.txt
+      # The template file.
+      # The content is parsed with text/template
+      template_file: zoo.txt
   condition:
     # When the skip is true, the phase is skipped.
     # The value should be true or false or a tengo script.

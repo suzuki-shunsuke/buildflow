@@ -405,6 +405,19 @@ func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error {
 				}
 				task.Command.Env.Vars[k] = v
 			}
+			if task.WriteFile.TemplateFile != "" {
+				p := task.WriteFile.TemplateFile
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(wd, p)
+				}
+				result, err := ctrl.FileReader.Read(p)
+				if err != nil {
+					return err
+				}
+				if err := task.WriteFile.Template.SetText(result.Text); err != nil {
+					return err
+				}
+			}
 			phase.Tasks[j] = task
 		}
 		ctrl.Config.Phases[i] = phase

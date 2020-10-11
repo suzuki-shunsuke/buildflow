@@ -27,8 +27,9 @@ type Task struct {
 }
 
 type WriteFile struct {
-	Path     Template
-	Template Template
+	Path         Template
+	Template     Template
+	TemplateFile string `yaml:"template_file"`
 }
 
 func (task *Task) Set() error {
@@ -50,11 +51,7 @@ func (task *Task) Set() error {
 }
 
 func (task *Task) SetType() error {
-	if task.Command.Command.Text != "" {
-		task.Type = constant.Command
-		return nil
-	}
-	if task.Command.CommandFile != "" {
+	if task.Command.Command.Text != "" || task.Command.CommandFile != "" {
 		task.Type = constant.Command
 		return nil
 	}
