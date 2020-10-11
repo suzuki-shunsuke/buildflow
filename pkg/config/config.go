@@ -105,7 +105,7 @@ for task in Tasks {
 		}
 
 		for j, task := range phase.Tasks {
-			if task.Command.Command.Text != "" {
+			if task.Command.Command.Text != "" || task.Command.CommandFile != "" {
 				task.Command = task.Command.SetDefault()
 			}
 			task.When.SetDefaultBool(true)
