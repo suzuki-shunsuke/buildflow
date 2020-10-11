@@ -469,6 +469,12 @@ phases:
       stdin: |
         {{.Task.Name}}
       command: grep stdin
+  - name: stdin_file
+    command:
+      # read the command standard input from a file.
+      # The content is parsed with text/template
+      stdin_file: stdin.txt
+      command: grep stdin
   - name: write_file external file
     write_file:
       # The file path to be written

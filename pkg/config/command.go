@@ -10,6 +10,7 @@ type Command struct {
 	Command     Template
 	CommandFile string `yaml:"command_file"`
 	Stdin       Template
+	StdinFile   string `yaml:"stdin_file"`
 	Env         Envs
 }
 
