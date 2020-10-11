@@ -18,12 +18,22 @@ import (
 
 type Phase struct {
 	Config     config.Phase
-	Tasks      []Task
-	mutex      sync.RWMutex
-	EventQueue EventQueue
+	EventQueue *EventQueue
 	Stdout     io.Writer
 	Stderr     io.Writer
 	TaskQueue  TaskQueue
+	Status     string
+	Error      error
+	Exit       bool
+	Tasks      *TaskList
+}
+
+func (phase Phase) Name() string {
+	return phase.Config.Name
+}
+
+func (phase Phase) Meta() map[string]interface{} {
+	return phase.Config.Meta
 }
 
 type EventQueue struct {
@@ -81,32 +91,17 @@ func (queue *TaskQueue) pop() {
 	}
 }
 
-func (phase *Phase) Set(idx int, task Task) {
-	phase.mutex.Lock()
-	phase.Tasks[idx] = task
-	phase.mutex.Unlock()
-}
-
-func (phase *Phase) GetAll() []Task {
-	phase.mutex.RLock()
-	a := phase.Tasks
-	phase.mutex.RUnlock()
-	return a
-}
-
 func (phase *Phase) Get(name string) []Task {
 	arr := []Task{}
-	phase.mutex.RLock()
-	for _, task := range phase.Tasks {
-		if task.Config.Name.Text == name {
+	for _, task := range phase.Tasks.GetAll() {
+		if task.Name() == name {
 			arr = append(arr, task)
 		}
 	}
-	phase.mutex.RUnlock()
 	return arr
 }
 
-func (phase ParamsPhase) outputResult(stderr io.Writer, name string) {
+func (phase Phase) outputResult(stderr io.Writer, name string) {
 	fmt.Fprintln(stderr, "\n================")
 	fmt.Fprintln(stderr, "= Phase Result: "+name+" =")
 	fmt.Fprintln(stderr, "================")
@@ -116,7 +111,7 @@ func (phase ParamsPhase) outputResult(stderr io.Writer, name string) {
 	}
 	utc := locale.UTC()
 	runTasks := []Task{}
-	for _, task := range phase.Tasks {
+	for _, task := range phase.Tasks.GetAll() {
 		if task.Result.Status == "skipped" {
 			continue
 		}
@@ -126,7 +121,7 @@ func (phase ParamsPhase) outputResult(stderr io.Writer, name string) {
 		fmt.Fprintln(stderr, "No task is run")
 	}
 	for _, task := range runTasks {
-		fmt.Fprintln(stderr, "task:", task.Config.Name.Text)
+		fmt.Fprintln(stderr, "task:", task.Name())
 		fmt.Fprintln(stderr, "status:", task.Result.Status)
 		fmt.Fprintln(stderr, "exit code:", task.Result.Command.ExitCode)
 		fmt.Fprintln(stderr, "start time:", task.Result.Time.Start.In(utc).Format(time.RFC3339))
@@ -140,54 +135,52 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 	if task.Result.Status != constant.Queue {
 		return nil
 	}
+	params.TaskIdx = idx
 
 	params.Item = task.Config.Item
+	paramsPhase := params.Phases[params.PhaseName]
+	defer func() {
+		paramsPhase.Tasks.Set(idx, task)
+	}()
 
 	isFinished := true
-	if task.Config.Dependency != nil {
-		for _, dependOn := range task.Config.CompiledDependency.Names {
-			dependencies := phase.Get(dependOn)
-			if len(dependencies) == 0 {
-				task.Result.Status = constant.Failed
-				phase.Set(idx, task)
-				return errors.New("invalid dependency. the task isn't found: " + dependOn)
-			}
-			for _, dependency := range dependencies {
-				if !dependency.Result.IsFinished() {
-					isFinished = false
-				}
-			}
-		}
-		b, err := task.Config.CompiledDependency.Program.Match(params.ToExpr())
-		if err != nil {
+
+	for _, dependOn := range task.Config.Dependency.Names {
+		dependencies := phase.Get(dependOn)
+		if len(dependencies) == 0 {
 			task.Result.Status = constant.Failed
-			phase.Set(idx, task)
-			return fmt.Errorf("failed to evaluate the dependency: %w", err)
+			return errors.New("invalid dependency. the task isn't found: " + dependOn)
 		}
-		if !b {
-			isFinished = false
+		for _, dependency := range dependencies {
+			if !dependency.Result.IsFinished() {
+				isFinished = false
+			}
 		}
+	}
+	b, err := task.Config.Dependency.Program.Match(params.ToExpr())
+	if err != nil {
+		task.Result.Status = constant.Failed
+		return fmt.Errorf("failed to evaluate the dependency: %w", err)
+	}
+	if !b {
+		isFinished = false
 	}
 	if !isFinished {
 		return nil
 	}
 
-	params.Task = task
-
 	f, err := task.Config.When.Match(params.ToExpr())
 	if err != nil {
 		task.Result.Status = constant.Failed
-		phase.Set(idx, task)
 		return fmt.Errorf(`failed to evaluate task's "when": %w`, err)
 	}
 	if !f {
 		task.Result.Status = constant.Skipped
-		phase.Set(idx, task)
 		return nil
 	}
 
 	task.Result.Status = constant.Running
-	phase.Set(idx, task)
+	paramsPhase.Tasks.Set(idx, task)
 
 	// evaluate input and add params
 	input, err := task.Config.Input.Run(params.ToExpr())
@@ -196,21 +189,19 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		task.Result.Error = err
 		logrus.WithFields(logrus.Fields{
 			"phase_name": phase.Config.Name,
-			"task_name":  task.Config.Name.Text,
+			"task_name":  task.Name(),
 			"task_index": idx,
 		}).WithError(err).Error("failed to run an input")
 		return fmt.Errorf(`failed to run an input: %w`, err)
 	}
 	task.Result.Input = input
-	params.Task = task
-	phase.Set(idx, task)
+	paramsPhase.Tasks.Set(idx, task)
 
 	switch task.Config.Type {
 	case constant.Command:
 		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = constant.Failed
-			phase.Set(idx, task)
 			return fmt.Errorf(`failed to render a command: %w`, err)
 		}
 		task.Config.Command.Command = cmd
@@ -218,7 +209,6 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		m, err := renderEnvs(task.Config.Command.Env, params)
 		if err != nil {
 			task.Result.Status = constant.Failed
-			phase.Set(idx, task)
 			return err
 		}
 		task.Config.Command.Env.Compiled = m
@@ -227,7 +217,6 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = constant.Failed
-			phase.Set(idx, task)
 			return fmt.Errorf(`failed to render read_file.path: %w`, err)
 		}
 		task.Config.ReadFile.Path = p
@@ -238,7 +227,6 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		p, err := task.Config.WriteFile.Path.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = constant.Failed
-			phase.Set(idx, task)
 			return fmt.Errorf(`failed to render write_file.path: %w`, err)
 		}
 		task.Config.WriteFile.Path = p
@@ -248,7 +236,6 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		tpl, err := task.Config.WriteFile.Template.New(params.ToTemplate())
 		if err != nil {
 			task.Result.Status = constant.Failed
-			phase.Set(idx, task)
 			return fmt.Errorf(`failed to render write_file.template: %w`, err)
 		}
 		task.Config.WriteFile.Template = tpl
@@ -256,7 +243,7 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 
 	go func(idx int, task Task, params Params) {
 		defer func() {
-			phase.Set(idx, task)
+			paramsPhase.Tasks.Set(idx, task)
 			phase.EventQueue.Push()
 		}()
 		phase.TaskQueue.push()
@@ -268,21 +255,19 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 			task.Result.Error = err
 			logrus.WithFields(logrus.Fields{
 				"phase_name": phase.Config.Name,
-				"task_name":  task.Config.Name.Text,
+				"task_name":  task.Name(),
 				"task_index": idx,
 			}).WithError(err).Error("failed to run a task")
 			return
 		}
 		task.Result.Status = constant.Succeeded
-		params.Task = task
-		phase.Set(idx, task)
 		output, err := task.Config.Output.Run(params.ToExpr())
 		if err != nil {
 			task.Result.Status = constant.Failed
 			task.Result.Error = err
 			logrus.WithFields(logrus.Fields{
 				"phase_name": phase.Config.Name,
-				"task_name":  task.Config.Name.Text,
+				"task_name":  task.Name(),
 				"task_index": idx,
 			}).WithError(err).Error("failed to run an output")
 			return
@@ -293,10 +278,11 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 }
 
 func (phase *Phase) Run(ctx context.Context, params Params, wd string) error {
-	for i, task := range phase.GetAll() {
+	p := params.Phases[params.PhaseName]
+	for i, task := range p.Tasks.GetAll() {
 		if err := phase.RunTask(ctx, i, task, params, wd); err != nil {
 			logrus.WithFields(logrus.Fields{
-				"task_name":  task.Config.Name.Text,
+				"task_name":  task.Name(),
 				"phase_name": phase.Config.Name,
 			}).WithError(err).Error("failed to run a task")
 		}
@@ -304,7 +290,7 @@ func (phase *Phase) Run(ctx context.Context, params Params, wd string) error {
 	allFinished := true
 	noRunning := true
 	queuedTasks := []string{}
-	for _, task := range phase.GetAll() {
+	for _, task := range phase.Tasks.GetAll() {
 		if !task.Result.IsFinished() {
 			allFinished = false
 			if task.Result.Status == constant.Running {
@@ -312,7 +298,7 @@ func (phase *Phase) Run(ctx context.Context, params Params, wd string) error {
 				break
 			}
 			if task.Result.Status == constant.Queue {
-				queuedTasks = append(queuedTasks, task.Config.Name.Text)
+				queuedTasks = append(queuedTasks, task.Name())
 			}
 		}
 	}

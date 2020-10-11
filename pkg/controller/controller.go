@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/google/go-github/v32/github"
 	"github.com/sirupsen/logrus"
@@ -19,38 +20,71 @@ import (
 type Params struct {
 	PR        interface{}
 	Files     interface{}
-	Phases    map[string]ParamsPhase
-	Task      Task
+	Phases    map[string]Phase
+	TaskIdx   int
 	PhaseName string
 	Item      config.Item
 	Meta      map[string]interface{}
 }
 
-type ParamsPhase struct {
-	Tasks  []Task
-	Status string
-	Error  error
-	Exit   bool
-	Meta   map[string]interface{}
-	Name   string
+type TaskList struct {
+	tasks []Task
+	mutex sync.RWMutex
 }
 
-func (phase ParamsPhase) ToTemplate() map[string]interface{} {
-	tasks := make([]interface{}, len(phase.Tasks))
-	for i, task := range phase.Tasks {
+func (list *TaskList) Set(idx int, task Task) {
+	list.mutex.Lock()
+	list.tasks[idx] = task
+	list.mutex.Unlock()
+}
+
+func (list *TaskList) GetAll() []Task {
+	list.mutex.RLock()
+	arr := make([]Task, len(list.tasks))
+	for i, task := range list.tasks {
+		arr[i] = task
+	}
+	list.mutex.RUnlock()
+	return arr
+}
+
+func (list *TaskList) Size() int {
+	list.mutex.RLock()
+	n := len(list.tasks)
+	list.mutex.RUnlock()
+	return n
+}
+
+func (list *TaskList) Get(idx int) Task {
+	if idx < 0 {
+		return Task{}
+	}
+	list.mutex.RLock()
+	task := list.tasks[idx]
+	list.mutex.RUnlock()
+	return task
+}
+
+func (phase Phase) ToTemplate() map[string]interface{} {
+	tasks := make([]interface{}, phase.Tasks.Size())
+	for i, task := range phase.Tasks.GetAll() {
 		tasks[i] = task.ToTemplate()
 	}
 	return map[string]interface{}{
 		"Status": phase.Status,
 		"Tasks":  tasks,
-		"Meta":   phase.Meta,
-		"Name":   phase.Name,
+		"Meta":   phase.Meta(),
+		"Name":   phase.Name(),
 	}
+}
+
+func (task Task) Name() string {
+	return task.Config.Name.Text
 }
 
 func (task Task) ToTemplate() map[string]interface{} {
 	m := map[string]interface{}{
-		"Name":   task.Config.Name.Text,
+		"Name":   task.Name(),
 		"Type":   task.Config.Type,
 		"Status": task.Result.Status,
 		"Meta":   task.Config.Meta,
@@ -75,10 +109,18 @@ func (params Params) ToTemplate() map[string]interface{} {
 	for k, phase := range params.Phases {
 		phases[k] = phase.ToTemplate()
 	}
+	task := Task{}
+	if params.PhaseName != "" {
+		phase, ok := params.Phases[params.PhaseName]
+		if !ok {
+			panic("phase not found: " + params.PhaseName)
+		}
+		task = phase.Tasks.Get(params.TaskIdx)
+	}
 	m := map[string]interface{}{
 		"PR":    params.PR,
 		"Files": params.Files,
-		"Task":  params.Task.ToTemplate(),
+		"Task":  task.ToTemplate(),
 		// phases.<phase-name>.status
 		// phases.<phase-name>.tasks[index].name
 		// phases.<phase-name>.tasks[index].status
@@ -92,7 +134,8 @@ func (params Params) ToTemplate() map[string]interface{} {
 
 	var tasks []interface{}
 	if params.PhaseName != "" {
-		pTasks := params.Phases[params.PhaseName].Tasks
+		t := params.Phases[params.PhaseName].Tasks
+		pTasks := t.GetAll()
 		tasks = make([]interface{}, len(pTasks))
 		for i, task := range pTasks {
 			tasks[i] = task.ToTemplate()
@@ -127,8 +170,10 @@ func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint
 	}
 	return Phase{
 		Config: phaseCfg,
-		Tasks:  tasks,
-		EventQueue: EventQueue{
+		Tasks: &TaskList{
+			tasks: tasks,
+		},
+		EventQueue: &EventQueue{
 			Queue: make(chan struct{}, len(tasks)),
 		},
 		Stdout:    ctrl.Stdout,
@@ -178,13 +223,15 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 
 func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
 	params := Params{
-		Meta:   ctrl.Config.Meta,
-		Phases: make(map[string]ParamsPhase, len(ctrl.Config.Phases)),
+		Meta:    ctrl.Config.Meta,
+		Phases:  make(map[string]Phase, len(ctrl.Config.Phases)),
+		TaskIdx: -1,
 	}
 	for _, phase := range ctrl.Config.Phases {
-		params.Phases[phase.Name] = ParamsPhase{
-			Meta: phase.Meta,
-			Name: phase.Name,
+		params.Phases[phase.Name] = Phase{
+			Tasks: &TaskList{
+				tasks: []Task{},
+			},
 		}
 	}
 
@@ -221,85 +268,84 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 	return params, nil
 }
 
-func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd string) (ParamsPhase, error) { //nolint:funlen
+func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd string) (Phase, error) { //nolint:funlen
 	phaseCfg := ctrl.Config.Phases[idx]
-	params.PhaseName = phaseCfg.Name
-	tasksCfg := []config.Task{}
-	phaseParams := ParamsPhase{
-		Meta: phaseCfg.Meta,
-		Name: phaseCfg.Name,
+	if len(phaseCfg.Tasks) == 0 {
+		return Phase{}, nil
 	}
+	params.PhaseName = phaseCfg.Name
+	phase := Phase{
+		Tasks: &TaskList{
+			tasks: []Task{},
+		},
+	}
+
+	tasksCfg := []config.Task{}
 	for _, task := range phaseCfg.Tasks {
 		tasks, err := Expand(task, params)
 		if err != nil {
-			phaseParams.Error = err
+			phase.Error = err
 			break
 		}
 		tasksCfg = append(tasksCfg, tasks...)
 	}
-	if phaseParams.Error != nil {
-		return phaseParams, nil
+	if phase.Error != nil {
+		return phase, nil
 	}
 	phaseCfg.Tasks = tasksCfg
-	ctrl.Config.Phases[idx] = phaseCfg
+	phase, err := ctrl.newPhase(phaseCfg)
+	if err != nil {
+		phase.Error = err
+		return phase, nil
+	}
+	params.Phases[params.PhaseName] = phase
 
 	if f, err := phaseCfg.Condition.Skip.Match(params.ToExpr()); err != nil {
-		phaseParams.Error = err
+		phase.Error = err
 		logrus.WithFields(logrus.Fields{
 			"phase_name": phaseCfg.Name,
 		}).WithError(err).Error(`failed to evaluate the phase's skip condition`)
-		return phaseParams, nil
+		return phase, nil
 	} else if f {
-		phaseParams.Status = constant.Skipped
-		return phaseParams, nil
+		phase.Status = constant.Skipped
+		return phase, nil
 	}
 
-	if len(phaseCfg.Tasks) > 0 { //nolint:dupl
-		phase, err := ctrl.newPhase(phaseCfg)
-		if err != nil {
-			phaseParams.Error = err
-			return phaseParams, nil
-		}
-		phaseParams.Tasks = phase.Tasks
-		phase.EventQueue.Push()
-		go func() {
-			<-ctx.Done()
+	phase.EventQueue.Push()
+	go func() {
+		<-ctx.Done()
+		phase.EventQueue.Close()
+	}()
+	params.Phases[phaseCfg.Name] = phase
+	fmt.Fprintln(phase.Stderr, "\n==============")
+	fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
+	fmt.Fprintln(phase.Stderr, "==============")
+	for range phase.EventQueue.Queue {
+		if err := phase.Run(ctx, params, wd); err != nil {
 			phase.EventQueue.Close()
-		}()
-		params.Phases[phaseCfg.Name] = phaseParams
-		fmt.Fprintln(phase.Stderr, "\n==============")
-		fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
-		fmt.Fprintln(phase.Stderr, "==============")
-		for range phase.EventQueue.Queue {
-			if err := phase.Run(ctx, params, wd); err != nil {
-				phase.EventQueue.Close()
-				log.Println(err)
-			}
-			phaseParams.Tasks = phase.Tasks
-			params.Phases[phaseCfg.Name] = phaseParams
+			log.Println(err)
 		}
-		phaseParams.Tasks = phase.Tasks
-		params.Phases[phaseCfg.Name] = phaseParams
-		phaseParams.Tasks = phase.Tasks
+		params.Phases[phaseCfg.Name] = phase
 	}
+	params.Phases[phaseCfg.Name] = phase
 
 	if f, err := phaseCfg.Condition.Fail.Match(params.ToExpr()); err != nil { //nolint:gocritic
-		phaseParams.Error = err
-		return phaseParams, nil
+		phase.Error = err
+		return phase, nil
 	} else if f {
-		phaseParams.Status = constant.Failed
+		phase.Status = constant.Failed
 	} else {
-		phaseParams.Status = constant.Succeeded
+		phase.Status = constant.Succeeded
 	}
 
 	if f, err := phaseCfg.Condition.Exit.Match(params.ToExpr()); err != nil {
-		return phaseParams, err
+		return phase, err
 	} else if f {
 		// TODO update result
-		phaseParams.Exit = true
-		return phaseParams, nil
+		phase.Exit = true
+		return phase, nil
 	}
-	return phaseParams, nil
+	return phase, nil
 }
 
 var ErrBuildFail = errors.New("build failed")
@@ -330,16 +376,16 @@ func (ctrl Controller) Run(ctx context.Context, wd string) error { //nolint:funl
 	}
 
 	for i, phaseCfg := range ctrl.Config.Phases {
-		phaseParams, err := ctrl.runPhase(ctx, params, i, wd)
-		if phaseParams.Error != nil {
-			phaseParams.Status = constant.Failed
+		phase, err := ctrl.runPhase(ctx, params, i, wd)
+		if phase.Error != nil {
+			phase.Status = constant.Failed
 		}
-		phaseParams.outputResult(ctrl.Stderr, phaseCfg.Name)
-		params.Phases[phaseCfg.Name] = phaseParams
+		phase.outputResult(ctrl.Stderr, phaseCfg.Name)
+		params.Phases[phaseCfg.Name] = phase
 		if err != nil {
 			return err
 		}
-		if phaseParams.Exit {
+		if phase.Exit {
 			break
 		}
 	}

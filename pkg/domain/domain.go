@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 )
 
 type Result struct {
@@ -36,7 +38,7 @@ type PhaseResult struct {
 }
 
 func (result Result) IsFinished() bool {
-	return !(result.Status == "running" || result.Status == "queue")
+	return !(result.Status == constant.Running || result.Status == constant.Queue)
 }
 
 type Time struct {
