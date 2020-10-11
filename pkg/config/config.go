@@ -89,7 +89,6 @@ for phase in Phases {
 		phase.Condition.Fail.SetDefaultBool(false)
 
 		if !phase.Condition.Fail.Initialized {
-			// b, err := expr.NewBool(`any(Tasks, {.Status == "failed"})`)
 			b, err := expr.NewBool(`
 result := false
 for task in Tasks {

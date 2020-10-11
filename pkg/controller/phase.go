@@ -131,7 +131,116 @@ func (phase Phase) outputResult(stderr io.Writer, name string) {
 	}
 }
 
-func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Params, wd string) error { //nolint:funlen,gocognit
+func (phase *Phase) IsReady(task Task, params Params) (bool, error) {
+	for _, dependOn := range task.Config.Dependency.Names {
+		dependencies := phase.Get(dependOn)
+		if len(dependencies) == 0 {
+			task.Result.Status = constant.Failed
+			return false, errors.New("invalid dependency. the task isn't found: " + dependOn)
+		}
+		for _, dependency := range dependencies {
+			if !dependency.Result.IsFinished() {
+				return false, nil
+			}
+		}
+	}
+	b, err := task.Config.Dependency.Program.Match(params.ToExpr())
+	if err != nil {
+		task.Result.Status = constant.Failed
+		return false, fmt.Errorf("failed to evaluate the dependency: %w", err)
+	}
+	if !b {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (phase *Phase) PrepareTask(task Task, params Params, wd string) (Task, error) {
+	switch task.Config.Type {
+	case constant.Command:
+		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = constant.Failed
+			return task, fmt.Errorf(`failed to render a command: %w`, err)
+		}
+		task.Config.Command.Command = cmd
+
+		m, err := renderEnvs(task.Config.Command.Env, params)
+		if err != nil {
+			task.Result.Status = constant.Failed
+			return task, err
+		}
+		task.Config.Command.Env.Compiled = m
+		return task, nil
+
+	case constant.ReadFile:
+		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = constant.Failed
+			return task, fmt.Errorf(`failed to render read_file.path: %w`, err)
+		}
+		task.Config.ReadFile.Path = p
+		if !filepath.IsAbs(p.Text) {
+			task.Config.ReadFile.Path.Text = filepath.Join(wd, p.Text)
+		}
+		return task, nil
+	case constant.WriteFile:
+		p, err := task.Config.WriteFile.Path.New(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = constant.Failed
+			return task, fmt.Errorf(`failed to render write_file.path: %w`, err)
+		}
+		task.Config.WriteFile.Path = p
+		if !filepath.IsAbs(p.Text) {
+			task.Config.WriteFile.Path.Text = filepath.Join(wd, p.Text)
+		}
+		tpl, err := task.Config.WriteFile.Template.New(params.ToTemplate())
+		if err != nil {
+			task.Result.Status = constant.Failed
+			return task, fmt.Errorf(`failed to render write_file.template: %w`, err)
+		}
+		task.Config.WriteFile.Template = tpl
+		return task, nil
+	default:
+		return task, errors.New("invalid task type")
+	}
+}
+
+func (phase *Phase) runTask(ctx context.Context, idx int, task Task, params Params, paramsPhase Phase, wd string) {
+	defer func() {
+		paramsPhase.Tasks.Set(idx, task)
+		phase.EventQueue.Push()
+	}()
+	phase.TaskQueue.push()
+	result, err := task.Run(ctx, wd)
+	phase.TaskQueue.pop()
+	task.Result = result
+	if err != nil {
+		task.Result.Status = constant.Failed
+		task.Result.Error = err
+		logrus.WithFields(logrus.Fields{
+			"phase_name": phase.Config.Name,
+			"task_name":  task.Name(),
+			"task_index": idx,
+		}).WithError(err).Error("failed to run a task")
+		return
+	}
+	task.Result.Status = constant.Succeeded
+	output, err := task.Config.Output.Run(params.ToExpr())
+	if err != nil {
+		task.Result.Status = constant.Failed
+		task.Result.Error = err
+		logrus.WithFields(logrus.Fields{
+			"phase_name": phase.Config.Name,
+			"task_name":  task.Name(),
+			"task_index": idx,
+		}).WithError(err).Error("failed to run an output")
+		return
+	}
+	task.Result.Output = output
+}
+
+func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Params, wd string) error {
 	if task.Result.Status != constant.Queue {
 		return nil
 	}
@@ -143,30 +252,8 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 		paramsPhase.Tasks.Set(idx, task)
 	}()
 
-	isFinished := true
-
-	for _, dependOn := range task.Config.Dependency.Names {
-		dependencies := phase.Get(dependOn)
-		if len(dependencies) == 0 {
-			task.Result.Status = constant.Failed
-			return errors.New("invalid dependency. the task isn't found: " + dependOn)
-		}
-		for _, dependency := range dependencies {
-			if !dependency.Result.IsFinished() {
-				isFinished = false
-			}
-		}
-	}
-	b, err := task.Config.Dependency.Program.Match(params.ToExpr())
-	if err != nil {
-		task.Result.Status = constant.Failed
-		return fmt.Errorf("failed to evaluate the dependency: %w", err)
-	}
-	if !b {
-		isFinished = false
-	}
-	if !isFinished {
-		return nil
+	if isReady, err := phase.IsReady(task, params); err != nil || !isReady {
+		return err
 	}
 
 	f, err := task.Config.When.Match(params.ToExpr())
@@ -197,83 +284,12 @@ func (phase *Phase) RunTask(ctx context.Context, idx int, task Task, params Para
 	task.Result.Input = input
 	paramsPhase.Tasks.Set(idx, task)
 
-	switch task.Config.Type {
-	case constant.Command:
-		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return fmt.Errorf(`failed to render a command: %w`, err)
-		}
-		task.Config.Command.Command = cmd
-
-		m, err := renderEnvs(task.Config.Command.Env, params)
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return err
-		}
-		task.Config.Command.Env.Compiled = m
-
-	case constant.ReadFile:
-		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return fmt.Errorf(`failed to render read_file.path: %w`, err)
-		}
-		task.Config.ReadFile.Path = p
-		if !filepath.IsAbs(p.Text) {
-			task.Config.ReadFile.Path.Text = filepath.Join(wd, p.Text)
-		}
-	case constant.WriteFile:
-		p, err := task.Config.WriteFile.Path.New(params.ToTemplate())
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return fmt.Errorf(`failed to render write_file.path: %w`, err)
-		}
-		task.Config.WriteFile.Path = p
-		if !filepath.IsAbs(p.Text) {
-			task.Config.WriteFile.Path.Text = filepath.Join(wd, p.Text)
-		}
-		tpl, err := task.Config.WriteFile.Template.New(params.ToTemplate())
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return fmt.Errorf(`failed to render write_file.template: %w`, err)
-		}
-		task.Config.WriteFile.Template = tpl
+	task, err = phase.PrepareTask(task, params, wd)
+	if err != nil {
+		return err
 	}
 
-	go func(idx int, task Task, params Params) {
-		defer func() {
-			paramsPhase.Tasks.Set(idx, task)
-			phase.EventQueue.Push()
-		}()
-		phase.TaskQueue.push()
-		result, err := task.Run(ctx, wd)
-		phase.TaskQueue.pop()
-		task.Result = result
-		if err != nil {
-			task.Result.Status = constant.Failed
-			task.Result.Error = err
-			logrus.WithFields(logrus.Fields{
-				"phase_name": phase.Config.Name,
-				"task_name":  task.Name(),
-				"task_index": idx,
-			}).WithError(err).Error("failed to run a task")
-			return
-		}
-		task.Result.Status = constant.Succeeded
-		output, err := task.Config.Output.Run(params.ToExpr())
-		if err != nil {
-			task.Result.Status = constant.Failed
-			task.Result.Error = err
-			logrus.WithFields(logrus.Fields{
-				"phase_name": phase.Config.Name,
-				"task_name":  task.Name(),
-				"task_index": idx,
-			}).WithError(err).Error("failed to run an output")
-			return
-		}
-		task.Result.Output = output
-	}(idx, task, params)
+	go phase.runTask(ctx, idx, task, params, paramsPhase, wd)
 	return nil
 }
 
