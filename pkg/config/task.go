@@ -54,6 +54,10 @@ func (task *Task) SetType() error {
 		task.Type = constant.Command
 		return nil
 	}
+	if task.Command.CommandFile != "" {
+		task.Type = constant.Command
+		return nil
+	}
 	if task.ReadFile.Path.Text != "" {
 		task.Type = constant.ReadFile
 		return nil

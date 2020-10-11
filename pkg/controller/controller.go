@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path/filepath"
 	"sync"
 
 	"github.com/google/go-github/v32/github"
@@ -14,6 +15,7 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	gh "github.com/suzuki-shunsuke/buildflow/pkg/github"
+	"github.com/suzuki-shunsuke/buildflow/pkg/template"
 	"github.com/suzuki-shunsuke/go-dataeq/dataeq"
 )
 
@@ -369,6 +371,47 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 
 var ErrBuildFail = errors.New("build failed")
 
+func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error { //nolint:gocognit
+	for i, phase := range ctrl.Config.Phases {
+		for j, task := range phase.Tasks {
+			if task.Command.CommandFile != "" {
+				p := task.Command.CommandFile
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(wd, p)
+				}
+				result, err := ctrl.FileReader.Read(p)
+				if err != nil {
+					return err
+				}
+				if err := task.Command.Command.SetText(result.Text); err != nil {
+					return err
+				}
+			}
+			for k, v := range task.Command.Env.Vars {
+				if v.ValueFile != "" {
+					p := v.ValueFile
+					if !filepath.IsAbs(p) {
+						p = filepath.Join(wd, p)
+					}
+					result, err := ctrl.FileReader.Read(p)
+					if err != nil {
+						return err
+					}
+					tpl, err := template.Compile(result.Text)
+					if err != nil {
+						return err
+					}
+					v.Value = tpl
+				}
+				task.Command.Env.Vars[k] = v
+			}
+			phase.Tasks[j] = task
+		}
+		ctrl.Config.Phases[i] = phase
+	}
+	return nil
+}
+
 func (ctrl Controller) Run(ctx context.Context, wd string) error {
 	pr, err := ctrl.getPR(ctx)
 	if err != nil {
@@ -380,6 +423,10 @@ func (ctrl Controller) Run(ctx context.Context, wd string) error {
 			"pr_number":     pr.GetNumber(),
 			"changed_files": pr.GetChangedFiles(),
 		}).Debug("pull request")
+	}
+
+	if err := ctrl.ReadExternalFiles(ctx, wd); err != nil {
+		return err
 	}
 
 	params, err := ctrl.getParams(ctx, pr)

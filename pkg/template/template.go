@@ -9,7 +9,8 @@ import (
 )
 
 type Template struct {
-	tpl *template.Template
+	Template *template.Template
+	Text     string
 }
 
 func Compile(tpl string) (Template, error) {
@@ -18,17 +19,35 @@ func Compile(tpl string) (Template, error) {
 		return Template{}, err
 	}
 	return Template{
-		tpl: tmpl,
+		Template: tmpl,
+		Text:     tpl,
 	}, nil
 }
 
+func (tpl Template) GetRaw() string {
+	return tpl.Text
+}
+
 func (tpl Template) Render(params interface{}) (string, error) {
-	if tpl.tpl == nil {
+	if tpl.Template == nil {
 		return "", nil
 	}
 	buf := &bytes.Buffer{}
-	if err := tpl.tpl.Execute(buf, params); err != nil {
+	if err := tpl.Template.Execute(buf, params); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func (tpl *Template) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var src string
+	if err := unmarshal(&src); err != nil {
+		return err
+	}
+	t, err := Compile(src)
+	if err != nil {
+		return err
+	}
+	*tpl = t
+	return nil
 }

@@ -28,3 +28,13 @@ func (tmpl Template) New(params interface{}) (Template, error) {
 		Template: tmpl.Template,
 	}, err
 }
+
+func (tmpl *Template) SetText(text string) error {
+	t, err := template.Compile(text)
+	if err != nil {
+		return err
+	}
+	tmpl.Text = text
+	tmpl.Template = t
+	return nil
+}

@@ -1,12 +1,15 @@
 package config
 
-import "github.com/suzuki-shunsuke/buildflow/pkg/template"
+import (
+	"github.com/suzuki-shunsuke/buildflow/pkg/template"
+)
 
 type Command struct {
-	Shell     string
-	ShellOpts []string `yaml:"shell_options"`
-	Command   Template
-	Env       Envs
+	Shell       string
+	ShellOpts   []string `yaml:"shell_options"`
+	Command     Template
+	CommandFile string `yaml:"command_file"`
+	Env         Envs
 }
 
 func (cmd Command) SetDefault() Command {
@@ -25,30 +28,16 @@ type Envs struct {
 }
 
 type EnvVar struct {
-	Key   template.Template
-	Value template.Template
+	Key       template.Template
+	Value     template.Template
+	ValueFile string `yaml:"value_file"`
 }
 
 func (envs *Envs) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	m := map[string]string{}
+	m := []EnvVar{}
 	if err := unmarshal(&m); err != nil {
 		return err
 	}
-	arr := make([]EnvVar, 0, len(m))
-	for k, v := range m {
-		key, err := template.Compile(k)
-		if err != nil {
-			return err
-		}
-		val, err := template.Compile(v)
-		if err != nil {
-			return err
-		}
-		arr = append(arr, EnvVar{
-			Key:   key,
-			Value: val,
-		})
-	}
-	envs.Vars = arr
+	envs.Vars = m
 	return nil
 }
