@@ -403,7 +403,12 @@ phases:
       # environment variables
       # In the environment variable name and value text/template can be used
       env:
-        token: "{{ .Task.Name }}"
+      - key: token
+        value: "{{ .Task.Name }}"
+      - key: foo
+        # read the environment variable from a file
+        # the content is parsed with text/template
+        value_file: foo.txt
     # The condition whether the task is run.
     # The default is true.
     # The value should be true or false or a tengo script.
@@ -452,6 +457,11 @@ phases:
       # The template of the file content.
       template: |
         {{ .Task.Name }}
+  - name: zoo
+    command:
+      # read a command template from a file
+      # The content is parsed with text/template
+      command_file: zoo.txt
   condition:
     # When the skip is true, the phase is skipped.
     # The value should be true or false or a tengo script.
