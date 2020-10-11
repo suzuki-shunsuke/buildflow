@@ -34,6 +34,7 @@ func (task Task) runCommand(ctx context.Context, wd string) (domain.CommandResul
 		TaskName:   task.Name(),
 		Stdout:     task.Stdout,
 		Stderr:     task.Stderr,
+		Stdin:      task.Config.Command.Stdin.Text,
 		WorkingDir: wd,
 		Envs:       task.Config.Command.Env.Compiled,
 	})

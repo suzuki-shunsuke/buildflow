@@ -155,24 +155,34 @@ func (phase *Phase) IsReady(task Task, params Params) (bool, error) {
 	return true, nil
 }
 
+func (phase *Phase) PrepareCommandTask(task Task, params Params, wd string) (Task, error) {
+	cmd, err := task.Config.Command.Command.New(params.ToTemplate())
+	if err != nil {
+		task.Result.Status = constant.Failed
+		return task, fmt.Errorf(`failed to render a command: %w`, err)
+	}
+	task.Config.Command.Command = cmd
+
+	stdin, err := task.Config.Command.Stdin.New(params.ToTemplate())
+	if err != nil {
+		task.Result.Status = constant.Failed
+		return task, fmt.Errorf(`failed to render a command.stdin: %w`, err)
+	}
+	task.Config.Command.Stdin = stdin
+
+	m, err := renderEnvs(task.Config.Command.Env, params)
+	if err != nil {
+		task.Result.Status = constant.Failed
+		return task, err
+	}
+	task.Config.Command.Env.Compiled = m
+	return task, nil
+}
+
 func (phase *Phase) PrepareTask(task Task, params Params, wd string) (Task, error) {
 	switch task.Config.Type {
 	case constant.Command:
-		cmd, err := task.Config.Command.Command.New(params.ToTemplate())
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return task, fmt.Errorf(`failed to render a command: %w`, err)
-		}
-		task.Config.Command.Command = cmd
-
-		m, err := renderEnvs(task.Config.Command.Env, params)
-		if err != nil {
-			task.Result.Status = constant.Failed
-			return task, err
-		}
-		task.Config.Command.Env.Compiled = m
-		return task, nil
-
+		return phase.PrepareCommandTask(task, params, wd)
 	case constant.ReadFile:
 		p, err := task.Config.ReadFile.Path.New(params.ToTemplate())
 		if err != nil {

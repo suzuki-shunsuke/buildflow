@@ -462,6 +462,13 @@ phases:
       # read a command template from a file
       # The content is parsed with text/template
       command_file: yoo.txt
+  - name: stdin
+    command:
+      # command standard input
+      # The content is parsed with text/template
+      stdin: |
+        {{.Task.Name}}
+      command: grep stdin
   - name: write_file external file
     write_file:
       # The file path to be written

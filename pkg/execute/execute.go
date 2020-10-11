@@ -16,7 +16,6 @@ import (
 )
 
 type Executor struct {
-	Stdin   io.Reader
 	Stdout  io.Writer
 	Stderr  io.Writer
 	Environ []string
@@ -24,7 +23,6 @@ type Executor struct {
 
 func New() Executor {
 	return Executor{
-		Stdin:   os.Stdin,
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 		Environ: os.Environ(),
@@ -39,6 +37,7 @@ type Params struct {
 	Quiet      bool
 	DryRun     bool
 	Timeout    Timeout
+	Stdin      string
 	Stdout     io.Writer
 	Stderr     io.Writer
 	TaskName   string
@@ -62,7 +61,9 @@ func (exc Executor) Run(ctx context.Context, params Params) (domain.CommandResul
 	}
 	cmd.Stdout = io.MultiWriter(params.Stdout, bufStdout, combinedOutput)
 	cmd.Stderr = io.MultiWriter(params.Stderr, bufStderr, combinedOutput)
-	cmd.Stdin = exc.Stdin
+	if params.Stdin != "" {
+		cmd.Stdin = strings.NewReader(params.Stdin)
+	}
 	cmd.Dir = params.WorkingDir
 
 	cmd.Env = append(exc.Environ, params.Envs...) //nolint:gocritic
