@@ -31,7 +31,7 @@ func (task Task) runCommand(ctx context.Context, wd string) (domain.CommandResul
 		Cmd:        task.Config.Command.Shell,
 		Args:       append(task.Config.Command.ShellOpts, task.Config.Command.Command.Text),
 		Timeout:    task.Config.Timeout,
-		TaskName:   task.Config.Name.Text,
+		TaskName:   task.Name(),
 		Stdout:     task.Stdout,
 		Stderr:     task.Stderr,
 		WorkingDir: wd,
@@ -60,7 +60,7 @@ func (task Task) run(ctx context.Context, wd string) (domain.Result, error) {
 			File: fileResult,
 		}, err
 	}
-	return domain.Result{}, errors.New("invalid task type: " + task.Config.Type + ", task name: " + task.Config.Name.Text)
+	return domain.Result{}, errors.New("invalid task type: " + task.Config.Type + ", task name: " + task.Name())
 }
 
 func (task Task) Run(ctx context.Context, wd string) (domain.Result, error) {
