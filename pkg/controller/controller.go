@@ -371,21 +371,31 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 
 var ErrBuildFail = errors.New("build failed")
 
+func (ctrl Controller) readTemplateFile(p, wd string, tpl *config.Template) error {
+	if p == "" {
+		return nil
+	}
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(wd, p)
+	}
+	result, err := ctrl.FileReader.Read(p)
+	if err != nil {
+		return err
+	}
+	if err := tpl.SetText(result.Text); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error { //nolint:gocognit
 	for i, phase := range ctrl.Config.Phases {
 		for j, task := range phase.Tasks {
-			if task.Command.CommandFile != "" {
-				p := task.Command.CommandFile
-				if !filepath.IsAbs(p) {
-					p = filepath.Join(wd, p)
-				}
-				result, err := ctrl.FileReader.Read(p)
-				if err != nil {
-					return err
-				}
-				if err := task.Command.Command.SetText(result.Text); err != nil {
-					return err
-				}
+			if err := ctrl.readTemplateFile(task.Command.CommandFile, wd, &task.Command.Command); err != nil {
+				return err
+			}
+			if err := ctrl.readTemplateFile(task.Command.StdinFile, wd, &task.Command.Stdin); err != nil {
+				return err
 			}
 			for k, v := range task.Command.Env.Vars {
 				if v.ValueFile != "" {
@@ -406,15 +416,7 @@ func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error {
 				task.Command.Env.Vars[k] = v
 			}
 			if task.WriteFile.TemplateFile != "" {
-				p := task.WriteFile.TemplateFile
-				if !filepath.IsAbs(p) {
-					p = filepath.Join(wd, p)
-				}
-				result, err := ctrl.FileReader.Read(p)
-				if err != nil {
-					return err
-				}
-				if err := task.WriteFile.Template.SetText(result.Text); err != nil {
+				if err := ctrl.readTemplateFile(task.WriteFile.TemplateFile, wd, &task.WriteFile.Template); err != nil {
 					return err
 				}
 			}

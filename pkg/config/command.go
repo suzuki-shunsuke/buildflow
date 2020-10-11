@@ -9,6 +9,8 @@ type Command struct {
 	ShellOpts   []string `yaml:"shell_options"`
 	Command     Template
 	CommandFile string `yaml:"command_file"`
+	Stdin       Template
+	StdinFile   string `yaml:"stdin_file"`
 	Env         Envs
 }
 
