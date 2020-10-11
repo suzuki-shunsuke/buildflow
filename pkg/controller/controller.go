@@ -151,7 +151,7 @@ func (params Params) ToExpr() map[string]interface{} {
 	return params.ToTemplate()
 }
 
-func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint:unparam
+func (ctrl Controller) newPhase(phaseCfg config.Phase) Phase {
 	tasks := make([]Task, len(phaseCfg.Tasks))
 	for i, taskCfg := range phaseCfg.Tasks {
 		task := Task{
@@ -179,7 +179,7 @@ func (ctrl Controller) newPhase(phaseCfg config.Phase) (Phase, error) { //nolint
 		Stdout:    ctrl.Stdout,
 		Stderr:    ctrl.Stderr,
 		TaskQueue: newTaskQueue(ctrl.Config.Parallelism),
-	}, nil
+	}
 }
 
 func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
@@ -221,7 +221,7 @@ func (ctrl Controller) getPR(ctx context.Context) (*github.PullRequest, error) {
 	return pr, nil
 }
 
-func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
+func (ctrl Controller) getParams(ctx context.Context, pr *github.PullRequest) (Params, error) {
 	params := Params{
 		Meta:    ctrl.Config.Meta,
 		Phases:  make(map[string]Phase, len(ctrl.Config.Phases)),
@@ -268,16 +268,13 @@ func (ctrl Controller) getTaskParams(ctx context.Context, pr *github.PullRequest
 	return params, nil
 }
 
-func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd string) (Phase, error) { //nolint:funlen
-	phaseCfg := ctrl.Config.Phases[idx]
-	if len(phaseCfg.Tasks) == 0 {
-		return Phase{}, nil
-	}
+func (ctrl Controller) getPhase(params Params, phaseCfg config.Phase) Phase {
 	params.PhaseName = phaseCfg.Name
 	phase := Phase{
 		Tasks: &TaskList{
 			tasks: []Task{},
 		},
+		Config: phaseCfg,
 	}
 
 	tasksCfg := []config.Task{}
@@ -290,25 +287,49 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 		tasksCfg = append(tasksCfg, tasks...)
 	}
 	if phase.Error != nil {
-		return phase, nil
+		return phase
 	}
 	phaseCfg.Tasks = tasksCfg
-	phase, err := ctrl.newPhase(phaseCfg)
-	if err != nil {
-		phase.Error = err
-		return phase, nil
-	}
-	params.Phases[params.PhaseName] = phase
+	return ctrl.newPhase(phaseCfg)
+}
 
+func (ctrl Controller) checkSkipPhase(params Params, phase Phase, phaseCfg config.Phase) (Phase, bool) {
 	if f, err := phaseCfg.Condition.Skip.Match(params.ToExpr()); err != nil {
-		phase.Error = err
 		logrus.WithFields(logrus.Fields{
 			"phase_name": phaseCfg.Name,
 		}).WithError(err).Error(`failed to evaluate the phase's skip condition`)
-		return phase, nil
+		phase.Error = err
+		phase.Status = constant.Failed
+		return phase, true
 	} else if f {
 		phase.Status = constant.Skipped
+		return phase, true
+	}
+	return phase, false
+}
+
+func (ctrl Controller) printPhaseHeader(phase Phase) {
+	fmt.Fprintln(phase.Stderr, "\n==============")
+	fmt.Fprintln(phase.Stderr, "= Phase: "+phase.Config.Name+" =")
+	fmt.Fprintln(phase.Stderr, "==============")
+}
+
+func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd string) (Phase, error) {
+	phaseCfg := ctrl.Config.Phases[idx]
+	if len(phaseCfg.Tasks) == 0 {
+		return Phase{}, nil
+	}
+	phase := ctrl.getPhase(params, phaseCfg)
+	if phase.Error != nil {
 		return phase, nil
+	}
+	params.PhaseName = phase.Name()
+	params.Phases[params.PhaseName] = phase
+
+	if p, f := ctrl.checkSkipPhase(params, phase, phaseCfg); f {
+		return phase, nil
+	} else { //nolint:golint
+		phase = p
 	}
 
 	phase.EventQueue.Push()
@@ -317,9 +338,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 		phase.EventQueue.Close()
 	}()
 	params.Phases[phaseCfg.Name] = phase
-	fmt.Fprintln(phase.Stderr, "\n==============")
-	fmt.Fprintln(phase.Stderr, "= Phase: "+phaseCfg.Name+" =")
-	fmt.Fprintln(phase.Stderr, "==============")
+	ctrl.printPhaseHeader(phase)
 	for range phase.EventQueue.Queue {
 		if err := phase.Run(ctx, params, wd); err != nil {
 			phase.EventQueue.Close()
@@ -350,7 +369,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 
 var ErrBuildFail = errors.New("build failed")
 
-func (ctrl Controller) Run(ctx context.Context, wd string) error { //nolint:funlen,gocognit
+func (ctrl Controller) Run(ctx context.Context, wd string) error {
 	pr, err := ctrl.getPR(ctx)
 	if err != nil {
 		return err
@@ -363,7 +382,7 @@ func (ctrl Controller) Run(ctx context.Context, wd string) error { //nolint:funl
 		}).Debug("pull request")
 	}
 
-	params, err := ctrl.getTaskParams(ctx, pr)
+	params, err := ctrl.getParams(ctx, pr)
 	if err != nil {
 		return err
 	}
