@@ -21,7 +21,9 @@ func (reader Reader) read(p string) (Config, error) {
 		return cfg, err
 	}
 	defer f.Close()
-	if err := yaml.NewDecoder(f).Decode(&cfg); err != nil {
+	decoder := yaml.NewDecoder(f)
+	decoder.SetStrict(true)
+	if err := decoder.Decode(&cfg); err != nil {
 		return cfg, err
 	}
 	return cfg, nil
