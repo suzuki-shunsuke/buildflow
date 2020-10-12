@@ -25,6 +25,12 @@ func (b *Bool) SetBool(f bool) {
 	b.Fixed = true
 }
 
+func (b *Bool) SetBoolProgram(f expr.BoolProgram) {
+	b.Prog = f
+	b.Fixed = false
+	b.Initialized = true
+}
+
 func (b *Bool) SetDefaultBool(f bool) {
 	if !b.Initialized {
 		b.SetBool(f)

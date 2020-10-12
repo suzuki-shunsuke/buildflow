@@ -12,6 +12,7 @@ type Task struct {
 	Name          Template
 	Type          string `yaml:"-"`
 	When          Bool
+	WhenFile      string `yaml:"when_file"`
 	Dependency    Dependency
 	Command       Command
 	ReadFile      ReadFile  `yaml:"read_file"`
