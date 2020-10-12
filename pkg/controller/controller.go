@@ -330,7 +330,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 
 	if p, f := ctrl.checkSkipPhase(params, phase, phaseCfg); f {
 		return phase, nil
-	} else { //nolint:golint
+	} else {
 		phase = p
 	}
 

@@ -12,6 +12,7 @@ type Phase struct {
 	Tasks     []Task
 	Condition PhaseCondition
 	Meta      map[string]interface{}
+	Import    string
 }
 
 type PhaseCondition struct {

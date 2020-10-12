@@ -8,3 +8,4 @@ linters:
   - godot
   - nlreturn
   - godox
+  - golint

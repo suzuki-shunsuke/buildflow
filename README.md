@@ -372,6 +372,8 @@ condtion:
 # The list of phases.
 # Phases are run not in parallel but sequentially.
 phases:
+# import a list of phases from a file.
+- import: phases.yaml
 # The phase name. This must be unique and static.
 - name: init
   # The meta attributes of the phase.
@@ -381,6 +383,8 @@ phases:
     service: foo
   # the list of tasks.
   tasks:
+  # import a list of tasks from a file.
+  - import: tasks.yaml
   # The task name. The value is parsed by text/template.
   - name: foo
     # a tengo script which represents task's input.
