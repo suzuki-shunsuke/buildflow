@@ -14,6 +14,7 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
+	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 	gh "github.com/suzuki-shunsuke/buildflow/pkg/github"
 	"github.com/suzuki-shunsuke/buildflow/pkg/template"
 	"github.com/suzuki-shunsuke/go-dataeq/dataeq"
@@ -418,6 +419,21 @@ func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error {
 			if task.WriteFile.TemplateFile != "" {
 				if err := ctrl.readTemplateFile(task.WriteFile.TemplateFile, wd, &task.WriteFile.Template); err != nil {
 					return err
+				}
+			}
+			if task.InputFile != "" {
+				p := task.InputFile
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(wd, p)
+				}
+				result, err := ctrl.FileReader.Read(p)
+				if err != nil {
+					return err
+				}
+				if prog, err := expr.New(result.Text); err != nil {
+					return err
+				} else {
+					task.Input.Prog = prog
 				}
 			}
 			phase.Tasks[j] = task
