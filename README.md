@@ -347,6 +347,22 @@ If the confgiuration file path isn't specified, the file named `.buildflow.yml` 
 * command.env[].value_file
 * write_file.template_file
 
+## Tips: Test Tengo Scripts
+
+Some Tengo scripts such as task's input and output can be read from external scripts.
+
+ex.
+
+```yaml
+  tasks:
+  - name: foo
+    input_file: foo_input.tengo
+    output_file: foo_output.tengo
+  ...
+```
+
+We can test external Tengo scripts with [suzuki-shunsuke/tengo-tester](https://github.com/suzuki-shunsuke/tengo-tester).
+
 ## Configuration Reference
 
 ```yaml
