@@ -32,9 +32,9 @@ func (runner Runner) setCLIArg(c *cli.Context, cfg config.Config) config.Config 
 	return cfg
 }
 
-func (runner Runner) importConfig(cfg config.Config, wd string) (config.Config, error) {
+func (runner Runner) importPhaseConfig(cfgPhases []config.Phase, wd string) ([]config.Phase, error) { //nolint:dupl
 	phases := []config.Phase{}
-	for _, phase := range cfg.Phases {
+	for _, phase := range cfgPhases {
 		if phase.Import == "" {
 			phases = append(phases, phase)
 			continue
@@ -43,16 +43,69 @@ func (runner Runner) importConfig(cfg config.Config, wd string) (config.Config, 
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(wd, p)
 		}
-		arr := []config.Phase{}
-		file, err := os.Open(p)
+		arr, err := func() ([]config.Phase, error) {
+			arr := []config.Phase{}
+			file, err := os.Open(p)
+			if err != nil {
+				return nil, err
+			}
+			defer file.Close()
+			if err := yaml.NewDecoder(file).Decode(&arr); err != nil {
+				return nil, err
+			}
+			return arr, nil
+		}()
+		if err != nil {
+			return phases, err
+		}
+		phases = append(phases, arr...)
+	}
+	return phases, nil
+}
+
+func (runner Runner) importTaskConfig(cfgTasks []config.Task, wd string) ([]config.Task, error) { //nolint:dupl
+	tasks := []config.Task{}
+	for _, task := range cfgTasks {
+		if task.Import == "" {
+			tasks = append(tasks, task)
+			continue
+		}
+		p := task.Import
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(wd, p)
+		}
+		arr, err := func() ([]config.Task, error) {
+			arr := []config.Task{}
+			file, err := os.Open(p)
+			if err != nil {
+				return nil, err
+			}
+			defer file.Close()
+			if err := yaml.NewDecoder(file).Decode(&arr); err != nil {
+				return nil, err
+			}
+			return arr, nil
+		}()
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, arr...)
+	}
+	return tasks, nil
+}
+
+func (runner Runner) importConfig(cfg config.Config, wd string) (config.Config, error) {
+	phases, err := runner.importPhaseConfig(cfg.Phases, wd)
+	if err != nil {
+		return cfg, err
+	}
+	for i, phase := range phases {
+		tasks, err := runner.importTaskConfig(phase.Tasks, wd)
 		if err != nil {
 			return cfg, err
 		}
-		defer file.Close()
-		if err := yaml.NewDecoder(file).Decode(&arr); err != nil {
-			return cfg, err
-		}
-		phases = append(phases, arr...)
+		phase.Tasks = tasks
+		phases[i] = phase
 	}
 	cfg.Phases = phases
 	return cfg, nil

@@ -24,6 +24,7 @@ type Task struct {
 	Meta          map[string]interface{}
 	Output        Script
 	Input         Script
+	Import        string
 }
 
 type WriteFile struct {
