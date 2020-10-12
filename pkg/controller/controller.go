@@ -389,6 +389,25 @@ func (ctrl Controller) readTemplateFile(p, wd string, tpl *config.Template) erro
 	return nil
 }
 
+func (ctrl Controller) readScript(p, wd string, scr *config.Script) error {
+	if p == "" {
+		return nil
+	}
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(wd, p)
+	}
+	result, err := ctrl.FileReader.Read(p)
+	if err != nil {
+		return err
+	}
+	if prog, err := expr.New(result.Text); err != nil {
+		return err
+	} else {
+		scr.Prog = prog
+	}
+	return nil
+}
+
 func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error { //nolint:gocognit
 	for i, phase := range ctrl.Config.Phases {
 		for j, task := range phase.Tasks {
@@ -421,20 +440,11 @@ func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error {
 					return err
 				}
 			}
-			if task.InputFile != "" {
-				p := task.InputFile
-				if !filepath.IsAbs(p) {
-					p = filepath.Join(wd, p)
-				}
-				result, err := ctrl.FileReader.Read(p)
-				if err != nil {
-					return err
-				}
-				if prog, err := expr.New(result.Text); err != nil {
-					return err
-				} else {
-					task.Input.Prog = prog
-				}
+			if err := ctrl.readScript(task.InputFile, wd, &task.Input); err != nil {
+				return err
+			}
+			if err := ctrl.readScript(task.OutputFile, wd, &task.Output); err != nil {
+				return err
 			}
 			phase.Tasks[j] = task
 		}
