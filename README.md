@@ -337,6 +337,16 @@ If the `phase.condtion.exit` is true, the build is finished and subsequent phase
 The configuration file path can be specified with the `--config (-c)` option.
 If the confgiuration file path isn't specified, the file named `.buildflow.yml` or `.buildflow.yaml` would be searched from the current directory to the root directory.
 
+## Separate Configuration file
+
+* phase.import
+* task.import
+* task.input_file
+* task.output_file
+* command.command_file
+* command.env[].value_file
+* write_file.template_file
+
 ## Configuration Reference
 
 ```yaml

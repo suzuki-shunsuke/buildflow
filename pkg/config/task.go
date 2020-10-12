@@ -24,6 +24,8 @@ type Task struct {
 	Meta          map[string]interface{}
 	Output        Script
 	Input         Script
+	InputFile     string `yaml:"input_file"`
+	OutputFile    string `yaml:"output_file"`
 	Import        string
 }
 
