@@ -13,6 +13,7 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/github"
 	"github.com/suzuki-shunsuke/go-findconfig/findconfig"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v2"
 )
 
 func (runner Runner) setCLIArg(c *cli.Context, cfg config.Config) config.Config {
@@ -31,6 +32,32 @@ func (runner Runner) setCLIArg(c *cli.Context, cfg config.Config) config.Config 
 	return cfg
 }
 
+func (runner Runner) importConfig(cfg config.Config, wd string) (config.Config, error) {
+	phases := []config.Phase{}
+	for _, phase := range cfg.Phases {
+		if phase.Import == "" {
+			phases = append(phases, phase)
+			continue
+		}
+		p := phase.Import
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(wd, p)
+		}
+		arr := []config.Phase{}
+		file, err := os.Open(p)
+		if err != nil {
+			return cfg, err
+		}
+		defer file.Close()
+		if err := yaml.NewDecoder(file).Decode(&arr); err != nil {
+			return cfg, err
+		}
+		phases = append(phases, arr...)
+	}
+	cfg.Phases = phases
+	return cfg, nil
+}
+
 func (runner Runner) action(c *cli.Context) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -42,6 +69,12 @@ func (runner Runner) action(c *cli.Context) error {
 	cfg, cfgPath, err := reader.FindAndRead(c.String("config"), wd)
 	if err != nil {
 		return err
+	}
+
+	if c, err := runner.importConfig(cfg, wd); err != nil {
+		return err
+	} else {
+		cfg = c
 	}
 
 	cfg = runner.setCLIArg(c, cfg)
