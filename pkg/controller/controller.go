@@ -408,6 +408,25 @@ func (ctrl Controller) readScript(p, wd string, scr *config.Script) error {
 	return nil
 }
 
+func (ctrl Controller) readBoolScript(p, wd string, scr *config.Bool) error {
+	if p == "" {
+		return nil
+	}
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(wd, p)
+	}
+	result, err := ctrl.FileReader.Read(p)
+	if err != nil {
+		return err
+	}
+	if prog, err := expr.NewBool(result.Text); err != nil {
+		return err
+	} else {
+		scr.SetBoolProgram(prog)
+	}
+	return nil
+}
+
 func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error { //nolint:gocognit
 	for i, phase := range ctrl.Config.Phases {
 		for j, task := range phase.Tasks {
@@ -444,6 +463,9 @@ func (ctrl Controller) ReadExternalFiles(ctx context.Context, wd string) error {
 				return err
 			}
 			if err := ctrl.readScript(task.OutputFile, wd, &task.Output); err != nil {
+				return err
+			}
+			if err := ctrl.readBoolScript(task.WhenFile, wd, &task.When); err != nil {
 				return err
 			}
 			phase.Tasks[j] = task

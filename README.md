@@ -343,6 +343,7 @@ If the confgiuration file path isn't specified, the file named `.buildflow.yml` 
 * task.import
 * task.input_file
 * task.output_file
+* task.when_file
 * command.command_file
 * command.env[].value_file
 * write_file.template_file
