@@ -56,7 +56,7 @@ func (task Task) run(ctx context.Context, wd string) (domain.Result, error) {
 	case constant.WriteFile:
 		// TODO append a new line
 		fileResult, err := task.FileWriter.Write(
-			task.Config.WriteFile.Path.Text, task.Config.WriteFile.Template.Text)
+			task.Config.WriteFile.Path.Text, task.Config.WriteFile.Template.Text+"\n")
 		return domain.Result{
 			File: fileResult,
 		}, err
