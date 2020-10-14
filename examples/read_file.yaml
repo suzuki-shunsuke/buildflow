@@ -1,0 +1,17 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: foo
+    read_file:
+      path: read_file.yaml
+  - name: bar
+    command:
+      command: |
+        echo "$FOO"
+      env:
+      - key: FOO
+        value: |
+          {{with GetTaskByName .Tasks "foo"}}{{.File.Text}}{{end}}
+    dependency:
+    - foo
