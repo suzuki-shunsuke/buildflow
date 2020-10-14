@@ -1,0 +1,7 @@
+---
+phases:
+- name: main
+  tsks: # typo
+  - name: hello
+    command:
+      command: echo hello

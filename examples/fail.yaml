@@ -1,0 +1,7 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: fail
+    command:
+      command: "false"
