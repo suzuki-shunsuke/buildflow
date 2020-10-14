@@ -1,0 +1,12 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: foo
+    command:
+      command: |
+        echo foo
+  - name: bar
+    command:
+      command: |
+        echo bar

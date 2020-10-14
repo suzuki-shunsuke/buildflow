@@ -21,6 +21,9 @@ jobs:
         CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
       run: |
         bash ci/test.sh buildflow
+    - name: test examples
+      run: |
+        bash ci/test-example.sh
 
     - name: remove changes
       # Sometimes it is failed to release by goreleaser due to changes of go.sum

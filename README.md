@@ -534,6 +534,10 @@ phases:
     fail: false
 ```
 
+## Examples of Configuration files
+
+Please see [examples](https://github.com/suzuki-shunsuke/buildflow/tree/master/examples).
+
 ### Configuration variables
 
 - PR: [Response body of GitHub API: Get a pull request](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-pull-request)
