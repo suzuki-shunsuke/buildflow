@@ -1,0 +1,11 @@
+---
+- name: main 2
+  tasks:
+  - name: hello
+    command:
+      command: echo "main 2"
+- name: main
+  tasks:
+  - name: main 3
+    command:
+      command: echo "main 3"

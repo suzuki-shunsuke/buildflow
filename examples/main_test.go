@@ -37,6 +37,10 @@ func TestBuildflow(t *testing.T) {
 			file:  "stdin.yaml",
 		},
 		{
+			title: "import phases from a file",
+			file:  "import_phases.yaml",
+		},
+		{
 			title: "buildflow run fails as expected",
 			file:  "fail.yaml",
 			exp: icmd.Expected{
