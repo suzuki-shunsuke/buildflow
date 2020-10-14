@@ -210,7 +210,7 @@ phases:
     - foo
     when: |
       text := import("text")
-      result := text.contains(Task[0].FileText, "dist")
+      result := text.contains(Task[0].File.Text, "dist")
 ```
 
 ### Refer to the pull request meta information in the configuration
@@ -578,7 +578,8 @@ phases:
         foo: foo
     - Name: bar
       Status: succeeded
-      FileText: foo # The content of the file
+      File:
+        Text: foo # The content of the file
   ...
 Tasks: # the tasks of the current phase
 - Name: init # the task name
