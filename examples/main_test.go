@@ -28,6 +28,14 @@ func TestBuildflow(t *testing.T) {
 				Err:      "",
 			},
 		},
+		{
+			title: "the task bar depends on the task foo",
+			file:  "task_dependency.yaml",
+			exp: icmd.Expected{
+				ExitCode: 0,
+				Err:      "",
+			},
+		},
 	}
 	for _, d := range data {
 		d := d
