@@ -1,0 +1,10 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: hello
+    command:
+      stdin: |
+        foo
+        bar
+      command: grep bar

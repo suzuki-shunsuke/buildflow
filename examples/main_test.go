@@ -29,6 +29,14 @@ func TestBuildflow(t *testing.T) {
 			file:  "task_when_true.yaml",
 		},
 		{
+			title: "read_file",
+			file:  "read_file.yaml",
+		},
+		{
+			title: "command's standard input",
+			file:  "stdin.yaml",
+		},
+		{
 			title: "buildflow run fails as expected",
 			file:  "fail.yaml",
 			exp: icmd.Expected{
