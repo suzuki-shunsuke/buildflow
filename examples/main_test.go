@@ -15,25 +15,31 @@ func TestBuildflow(t *testing.T) {
 		{
 			title: "hello world",
 			file:  "hello_world.yaml",
-			exp: icmd.Expected{
-				ExitCode: 0,
-				Err:      "",
-			},
 		},
 		{
 			title: "run tasks in parallel",
 			file:  "parallel.yaml",
-			exp: icmd.Expected{
-				ExitCode: 0,
-				Err:      "",
-			},
 		},
 		{
 			title: "the task bar depends on the task foo",
 			file:  "task_dependency.yaml",
+		},
+		{
+			title: "task.when is true",
+			file:  "task_when_true.yaml",
+		},
+		{
+			title: "buildflow run fails as expected",
+			file:  "fail.yaml",
 			exp: icmd.Expected{
-				ExitCode: 0,
-				Err:      "",
+				ExitCode: 1,
+			},
+		},
+		{
+			title: "if there are unknown fields in configuration file, buildflow run fails",
+			file:  "unknown_field.yaml",
+			exp: icmd.Expected{
+				ExitCode: 1,
 			},
 		},
 	}
