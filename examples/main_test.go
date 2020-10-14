@@ -6,18 +6,34 @@ import (
 	"gotest.tools/v3/icmd"
 )
 
-func TestHelloWorld(t *testing.T) {
-	result := icmd.RunCmd(icmd.Command("buildflow", "run", "-c", "hello_world.yaml"))
-	result.Assert(t, icmd.Expected{
-		ExitCode: 0,
-		Err:      "",
-	})
-}
-
-func TestParallel(t *testing.T) {
-	result := icmd.RunCmd(icmd.Command("buildflow", "run", "-c", "parallel.yaml"))
-	result.Assert(t, icmd.Expected{
-		ExitCode: 0,
-		Err:      "",
-	})
+func TestBuildflow(t *testing.T) {
+	data := []struct {
+		title string
+		file  string
+		exp   icmd.Expected
+	}{
+		{
+			title: "hello world",
+			file:  "hello_world.yaml",
+			exp: icmd.Expected{
+				ExitCode: 0,
+				Err:      "",
+			},
+		},
+		{
+			title: "run tasks in parallel",
+			file:  "parallel.yaml",
+			exp: icmd.Expected{
+				ExitCode: 0,
+				Err:      "",
+			},
+		},
+	}
+	for _, d := range data {
+		d := d
+		t.Run(d.title, func(t *testing.T) {
+			result := icmd.RunCmd(icmd.Command("buildflow", "run", "-c", d.file))
+			result.Assert(t, d.exp)
+		})
+	}
 }
