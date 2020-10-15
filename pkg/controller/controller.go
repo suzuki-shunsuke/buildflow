@@ -330,7 +330,7 @@ func (ctrl Controller) runPhase(ctx context.Context, params Params, idx int, wd 
 	params.Phases[params.PhaseName] = phase
 
 	if p, f := ctrl.checkSkipPhase(params, phase, phaseCfg); f {
-		return phase, nil
+		return p, nil
 	} else {
 		phase = p
 	}
@@ -509,8 +509,8 @@ func (ctrl Controller) Run(ctx context.Context, wd string) error {
 		if phase.Error != nil {
 			phase.Status = constant.Failed
 		}
-		phase.outputResult(ctrl.Stderr, phaseCfg.Name)
 		params.Phases[phaseCfg.Name] = phase
+		phase.outputResult(ctrl.Stderr, phaseCfg.Name)
 		if err != nil {
 			return err
 		}

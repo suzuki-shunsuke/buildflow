@@ -109,6 +109,9 @@ func (phase Phase) outputResult(stderr io.Writer, name string) {
 	if phase.Error != nil {
 		fmt.Fprintln(stderr, "error:", phase.Error)
 	}
+	if phase.Status == constant.Skipped {
+		return
+	}
 	utc := locale.UTC()
 	runTasks := []Task{}
 	for _, task := range phase.Tasks.GetAll() {
