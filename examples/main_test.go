@@ -49,6 +49,10 @@ func TestBuildflow(t *testing.T) { //nolint:funlen
 			file:  "import_tasks.yaml",
 		},
 		{
+			title: "dynamic task by items",
+			file:  "dynamic_task.yaml",
+		},
+		{
 			title: "buildflow run fails as expected",
 			file:  "fail.yaml",
 			exp: icmd.Expected{
