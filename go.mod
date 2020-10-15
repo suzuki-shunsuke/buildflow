@@ -16,6 +16,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1
 	github.com/suzuki-shunsuke/go-ci-env v0.2.1
+	github.com/suzuki-shunsuke/go-convmap v0.1.0
 	github.com/suzuki-shunsuke/go-dataeq v1.0.1
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
 	github.com/suzuki-shunsuke/go-findconfig v0.1.0

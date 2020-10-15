@@ -364,6 +364,21 @@ ex.
 
 We can test external Tengo scripts with [suzuki-shunsuke/tengo-tester](https://github.com/suzuki-shunsuke/tengo-tester).
 
+## Restriction: map key should be string
+
+* meta
+* phase.meta
+* task.meta
+* task.items
+
+NG
+
+```yaml
+---
+meta:
+  true: foo # invalid key: key should be string
+```
+
 ## Configuration Reference
 
 ```yaml
