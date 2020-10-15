@@ -15,3 +15,7 @@ phases:
       result := func(task) {
         return task.Name == "when"
       }(Task)
+  - name: read task.when from a file
+    command:
+      command: echo "hello"
+    when_file: task_when.tengo
