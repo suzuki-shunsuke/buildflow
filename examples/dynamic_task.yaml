@@ -1,0 +1,10 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: "list {{.Item.Key}} {{.Item.Value}}"
+    command:
+      command: "echo {{.Item.Key}} {{.Item.Value}}"
+    items:
+    - foo
+    - bar
