@@ -1,10 +1,12 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
 	"github.com/suzuki-shunsuke/go-ci-env/cienv"
+	"github.com/suzuki-shunsuke/go-convmap/convmap"
 )
 
 type Phase struct {
@@ -52,12 +54,29 @@ type Env struct {
 	CI           bool
 }
 
+func convertMeta(meta map[string]interface{}) error {
+	for k, a := range meta {
+		b, err := convmap.Convert(a)
+		if err != nil {
+			return fmt.Errorf("parse meta: %w", err)
+		}
+		meta[k] = b
+	}
+	return nil
+}
+
 func Set(cfg Config) (Config, error) {
 	cfg = setDefault(setEnv(cfg))
+	if err := convertMeta(cfg.Meta); err != nil {
+		return cfg, fmt.Errorf(".meta is invalid: %w", err)
+	}
 	for i, phase := range cfg.Phases {
+		if err := convertMeta(phase.Meta); err != nil {
+			return cfg, fmt.Errorf("phase is invalid: %s: %w", phase.Name, err)
+		}
 		for j, task := range phase.Tasks {
 			if err := task.Set(); err != nil {
-				return cfg, err
+				return cfg, fmt.Errorf("task is invalid: %w", err)
 			}
 			phase.Tasks[j] = task
 		}

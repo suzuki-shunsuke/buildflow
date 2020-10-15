@@ -51,6 +51,10 @@ func (task *Task) Set() error {
 		}
 	}
 
+	if err := convertMeta(task.Meta); err != nil {
+		return err
+	}
+
 	return nil
 }
 
