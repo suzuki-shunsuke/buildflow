@@ -538,6 +538,16 @@ phases:
 
 Please see [examples](https://github.com/suzuki-shunsuke/buildflow/tree/master/examples).
 
+On the directory, there are some examples of configuration files.
+
+We can execute the build with them.
+
+For example,
+
+```
+$ buildflow run -c examples/hello_world.yaml
+```
+
 ### Configuration variables
 
 - PR: [Response body of GitHub API: Get a pull request](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-pull-request)

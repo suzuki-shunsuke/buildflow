@@ -4,3 +4,4 @@ bin/*
 .git-rm-branch.yml
 .buildflow.yaml
 .envrc
+examples/foo.txt
