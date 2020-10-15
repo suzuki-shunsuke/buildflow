@@ -6,6 +6,7 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
 	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
+	"github.com/suzuki-shunsuke/go-convmap/convmap"
 )
 
 type Task struct {
@@ -49,6 +50,12 @@ func (task *Task) Set() error {
 		task.CompiledItems = Items{
 			Program: prog,
 		}
+	} else if task.Items != nil {
+		a, err := convmap.Convert(task.Items)
+		if err != nil {
+			return err
+		}
+		task.Items = a
 	}
 
 	if err := convertMeta(task.Meta); err != nil {
