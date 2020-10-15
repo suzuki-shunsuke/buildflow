@@ -5,3 +5,4 @@ bin/*
 .buildflow.yaml
 .envrc
 examples/foo.txt
+examples/foo_2.txt
