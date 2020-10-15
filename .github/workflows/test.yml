@@ -23,7 +23,7 @@ jobs:
         bash ci/test.sh buildflow
     - name: test examples
       run: |
-        bash ci/test-example.sh
+        bash scripts/test-example.sh
 
     - name: remove changes
       # Sometimes it is failed to release by goreleaser due to changes of go.sum

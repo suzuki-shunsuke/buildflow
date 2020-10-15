@@ -47,3 +47,8 @@ tasks:
   description: buildflow run for test
   usage: buildflow run for test
   script: "go run ./cmd/buildflow run"
+- name: test-example
+  short: te
+  description: test examples
+  usage: test examples
+  script: "bash scripts/test-example.sh"
