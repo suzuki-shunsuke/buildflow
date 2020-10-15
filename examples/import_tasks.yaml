@@ -1,0 +1,8 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: hello
+    command:
+      command: echo hello
+  - import: tasks.yaml

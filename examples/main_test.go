@@ -41,6 +41,10 @@ func TestBuildflow(t *testing.T) {
 			file:  "import_phases.yaml",
 		},
 		{
+			title: "import tasks from a file",
+			file:  "import_tasks.yaml",
+		},
+		{
 			title: "buildflow run fails as expected",
 			file:  "fail.yaml",
 			exp: icmd.Expected{
