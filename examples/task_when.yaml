@@ -1,0 +1,17 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: "when true"
+    command:
+      command: echo "when is always true"
+    when: true
+  - name: when
+    command:
+      command: echo "use Tengo script in when"
+    when: |
+      // Tengo script
+      // Define the variable "result" and this value should be true or false.
+      result := func(task) {
+        return task.Name == "when"
+      }(Task)

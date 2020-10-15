@@ -1,8 +1,0 @@
----
-phases:
-- name: main
-  tasks:
-  - name: "when true"
-    command:
-      command: ":"
-    when: true

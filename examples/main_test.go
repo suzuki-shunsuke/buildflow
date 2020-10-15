@@ -25,8 +25,8 @@ func TestBuildflow(t *testing.T) { //nolint:funlen
 			file:  "task_dependency.yaml",
 		},
 		{
-			title: "task.when is true",
-			file:  "task_when_true.yaml",
+			title: "task.when",
+			file:  "task_when.yaml",
 		},
 		{
 			title: "read_file",
