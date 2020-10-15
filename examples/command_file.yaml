@@ -1,0 +1,7 @@
+---
+phases:
+- name: main
+  tasks:
+  - name: read command from a file
+    command:
+      command_file: command_file.sh

@@ -1,0 +1,5 @@
+// Tengo script
+// Define the variable "result" and this value should be true or false.
+result := func(task) {
+  return task.Name == "when"
+}(Task)

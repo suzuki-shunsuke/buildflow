@@ -17,6 +17,10 @@ func TestBuildflow(t *testing.T) { //nolint:funlen
 			file:  "hello_world.yaml",
 		},
 		{
+			title: "read command from a file (task.command_file)",
+			file:  "command_file.yaml",
+		},
+		{
 			title: "run tasks in parallel",
 			file:  "parallel.yaml",
 		},
@@ -25,8 +29,8 @@ func TestBuildflow(t *testing.T) { //nolint:funlen
 			file:  "task_dependency.yaml",
 		},
 		{
-			title: "task.when is true",
-			file:  "task_when_true.yaml",
+			title: "task.when",
+			file:  "task_when.yaml",
 		},
 		{
 			title: "read_file",
