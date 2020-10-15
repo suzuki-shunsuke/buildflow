@@ -6,7 +6,7 @@ import (
 	"gotest.tools/v3/icmd"
 )
 
-func TestBuildflow(t *testing.T) {
+func TestBuildflow(t *testing.T) { //nolint:funlen
 	data := []struct {
 		title string
 		file  string
@@ -31,6 +31,10 @@ func TestBuildflow(t *testing.T) {
 		{
 			title: "read_file",
 			file:  "read_file.yaml",
+		},
+		{
+			title: "write_file",
+			file:  "write_file.yaml",
 		},
 		{
 			title: "command's standard input",
