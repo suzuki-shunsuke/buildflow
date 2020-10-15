@@ -53,6 +53,10 @@ func TestBuildflow(t *testing.T) { //nolint:funlen
 			file:  "dynamic_task.yaml",
 		},
 		{
+			title: "skip a phase",
+			file:  "skip_phase.yaml",
+		},
+		{
 			title: "buildflow run fails as expected",
 			file:  "fail.yaml",
 			exp: icmd.Expected{

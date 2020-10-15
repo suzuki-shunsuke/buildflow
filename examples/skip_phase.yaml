@@ -1,0 +1,9 @@
+---
+phases:
+- name: skipped
+  tasks:
+  - name: hello
+    command:
+      command: echo hello
+  condition:
+    skip: true
