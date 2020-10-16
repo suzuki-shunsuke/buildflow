@@ -2,9 +2,11 @@
 phases:
 - name: main
   tasks:
-  - name: "list {{.Item.Key}} {{.Item.Value}}"
+  - name: "list {{.Item.Key}} {{.Item.Value.name}}"
     command:
-      command: "echo {{.Item.Key}} {{.Item.Value}}"
+      command: "echo {{.Item.Key}} {{.Item.Value.name}} {{.Item.Value.age}}"
     items:
-    - foo
-    - bar
+    - name: foo
+      age: 10
+    - name: bar
+      age: 20

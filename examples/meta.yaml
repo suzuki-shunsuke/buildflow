@@ -1,0 +1,17 @@
+---
+meta:
+  hey:
+    hey: yo
+phases:
+- name: main
+  meta:
+    foo: bar
+  tasks:
+  - name: hello
+    meta:
+      message: hello world
+    command:
+      command: |
+        echo "{{.Meta.hey.hey}}"
+        echo "{{.Phase.Meta.foo}}"
+        echo "{{.Task.Meta.message}}"
