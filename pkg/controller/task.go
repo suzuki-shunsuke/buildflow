@@ -11,6 +11,8 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
+	"github.com/suzuki-shunsuke/go-convmap/convmap"
+	"gopkg.in/yaml.v2"
 )
 
 type Task struct {
@@ -67,7 +69,17 @@ func (task Task) run(ctx context.Context, wd string) (domain.Result, error) {
 			}
 			result.File.Data = d
 			return result, nil
-		// case "yaml":
+		case "yaml":
+			var d interface{}
+			if err := yaml.Unmarshal([]byte(fileResult.Text), &d); err != nil {
+				return result, err
+			}
+			a, err := convmap.Convert(d)
+			if err != nil {
+				return result, err
+			}
+			result.File.Data = a
+			return result, nil
 		// case "toml":
 		default:
 			return result, errors.New("invalid file.format: " + task.Config.ReadFile.Format)

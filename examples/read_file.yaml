@@ -29,3 +29,17 @@ phases:
           {{with GetTaskByName .Tasks "json"}}{{.File.Data.name}}{{end}}
     dependency:
     - json
+  - name: yaml
+    read_file:
+      format: yaml
+      path: data.yaml
+  - name: output yaml
+    command:
+      command: |
+        echo "$FOO"
+      env:
+      - key: FOO
+        value: |
+          {{with GetTaskByName .Tasks "yaml"}}{{.File.Data.message}}{{end}}
+    dependency:
+    - yaml
