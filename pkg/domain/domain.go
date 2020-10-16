@@ -61,6 +61,7 @@ type FileResult struct {
 	Size    int64
 	Mode    os.FileMode
 	IsDir   bool
+	Data    interface{}
 }
 
 func (fileResult FileResult) ToTemplate() map[string]interface{} {
@@ -71,6 +72,7 @@ func (fileResult FileResult) ToTemplate() map[string]interface{} {
 		"ModTime": fileResult.ModTime,
 		"Size":    fileResult.Size,
 		"IsDir":   fileResult.IsDir,
+		"Data":    fileResult.Data,
 	}
 }
 

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/domain"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
+	"github.com/suzuki-shunsuke/go-convmap/convmap"
+	"gopkg.in/yaml.v2"
 )
 
 type Task struct {
@@ -50,9 +53,37 @@ func (task Task) run(ctx context.Context, wd string) (domain.Result, error) {
 		}, err
 	case constant.ReadFile:
 		fileResult, err := task.FileReader.Read(task.Config.ReadFile.Path.Text)
-		return domain.Result{
+		result := domain.Result{
 			File: fileResult,
-		}, err
+		}
+		if err != nil {
+			return result, err
+		}
+		switch task.Config.ReadFile.Format {
+		case "":
+			return result, err
+		case "json":
+			var d interface{}
+			if err := json.Unmarshal([]byte(fileResult.Text), &d); err != nil {
+				return result, err
+			}
+			result.File.Data = d
+			return result, nil
+		case "yaml":
+			var d interface{}
+			if err := yaml.Unmarshal([]byte(fileResult.Text), &d); err != nil {
+				return result, err
+			}
+			a, err := convmap.Convert(d)
+			if err != nil {
+				return result, err
+			}
+			result.File.Data = a
+			return result, nil
+		// case "toml":
+		default:
+			return result, errors.New("invalid file.format: " + task.Config.ReadFile.Format)
+		}
 	case constant.WriteFile:
 		// TODO append a new line
 		fileResult, err := task.FileWriter.Write(
