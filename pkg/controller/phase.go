@@ -320,7 +320,7 @@ func (phase *Phase) Run(ctx context.Context, params Params, wd string) error {
 	allFinished := true
 	noRunning := true
 	queuedTasks := []string{}
-	for _, task := range phase.Tasks.GetAll() {
+	for _, task := range p.Tasks.GetAll() {
 		if !task.Result.IsFinished() {
 			allFinished = false
 			if task.Result.Status == constant.Running {
