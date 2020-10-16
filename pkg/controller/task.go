@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"time"
@@ -50,9 +51,27 @@ func (task Task) run(ctx context.Context, wd string) (domain.Result, error) {
 		}, err
 	case constant.ReadFile:
 		fileResult, err := task.FileReader.Read(task.Config.ReadFile.Path.Text)
-		return domain.Result{
+		result := domain.Result{
 			File: fileResult,
-		}, err
+		}
+		if err != nil {
+			return result, err
+		}
+		switch task.Config.ReadFile.Format {
+		case "":
+			return result, err
+		case "json":
+			var d interface{}
+			if err := json.Unmarshal([]byte(fileResult.Text), &d); err != nil {
+				return result, err
+			}
+			result.File.Data = d
+			return result, nil
+		// case "yaml":
+		// case "toml":
+		default:
+			return result, errors.New("invalid file.format: " + task.Config.ReadFile.Format)
+		}
 	case constant.WriteFile:
 		// TODO append a new line
 		fileResult, err := task.FileWriter.Write(
