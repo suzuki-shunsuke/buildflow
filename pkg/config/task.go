@@ -5,30 +5,27 @@ import (
 
 	"github.com/suzuki-shunsuke/buildflow/pkg/constant"
 	"github.com/suzuki-shunsuke/buildflow/pkg/execute"
-	"github.com/suzuki-shunsuke/buildflow/pkg/expr"
-	"github.com/suzuki-shunsuke/go-convmap/convmap"
 )
 
 type Task struct {
-	Name          Template
-	Type          string `yaml:"-"`
-	When          Bool
-	WhenFile      string `yaml:"when_file"`
-	Dependency    Dependency
-	Command       Command
-	ReadFile      ReadFile  `yaml:"read_file"`
-	WriteFile     WriteFile `yaml:"write_file"`
-	HTTP          HTTP
-	Timeout       execute.Timeout
-	Items         interface{}
-	Item          Item `yaml:"-"`
-	CompiledItems Items
-	Meta          map[string]interface{}
-	Output        Script
-	Input         Script
-	InputFile     string `yaml:"input_file"`
-	OutputFile    string `yaml:"output_file"`
-	Import        string
+	Name       Template
+	Type       string `yaml:"-"`
+	When       Bool
+	WhenFile   string `yaml:"when_file"`
+	Dependency Dependency
+	Command    Command
+	ReadFile   ReadFile  `yaml:"read_file"`
+	WriteFile  WriteFile `yaml:"write_file"`
+	HTTP       HTTP
+	Timeout    execute.Timeout
+	Items      Items
+	Item       Item `yaml:"-"`
+	Meta       map[string]interface{}
+	Output     Script
+	Input      Script
+	InputFile  string `yaml:"input_file"`
+	OutputFile string `yaml:"output_file"`
+	Import     string
 }
 
 type WriteFile struct {
@@ -40,22 +37,6 @@ type WriteFile struct {
 func (task *Task) Set() error {
 	if err := task.SetType(); err != nil {
 		return err
-	}
-
-	if s, ok := task.Items.(string); ok {
-		prog, err := expr.New(s)
-		if err != nil {
-			return err
-		}
-		task.CompiledItems = Items{
-			Program: prog,
-		}
-	} else if task.Items != nil {
-		a, err := convmap.Convert(task.Items)
-		if err != nil {
-			return err
-		}
-		task.Items = a
 	}
 
 	if err := convertMeta(task.Meta); err != nil {
