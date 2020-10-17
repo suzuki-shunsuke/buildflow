@@ -5,8 +5,8 @@
   - name: hello
     command:
       command: echo "main 2"
-- name: main
+- name: main 3
   tasks:
-  - name: main 3
+  - name: hello
     command:
       command: echo "main 3"
