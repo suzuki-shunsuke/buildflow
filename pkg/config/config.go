@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -70,7 +71,12 @@ func Set(cfg Config) (Config, error) {
 	if err := convertMeta(cfg.Meta); err != nil {
 		return cfg, fmt.Errorf(".meta is invalid: %w", err)
 	}
+	phaseNames := make(map[string]struct{}, len(cfg.Phases))
 	for i, phase := range cfg.Phases {
+		if _, ok := phaseNames[phase.Name]; ok {
+			return cfg, errors.New("phase name is duplicated: " + phase.Name)
+		}
+		phaseNames[phase.Name] = struct{}{}
 		if err := convertMeta(phase.Meta); err != nil {
 			return cfg, fmt.Errorf("phase is invalid: %s: %w", phase.Name, err)
 		}
