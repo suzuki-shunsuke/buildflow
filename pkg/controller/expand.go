@@ -73,7 +73,14 @@ func expandItems(task config.Task, items interface{}, templateParams Params) ([]
 }
 
 func Expand(task config.Task, params Params) ([]config.Task, error) {
-	if task.Items == nil {
+	if task.Items.Items != nil {
+		return expandItems(task, task.Items.Items, params)
+	}
+	items, err := task.Items.Run(params.ToExpr())
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
 		name, err := task.Name.New(params.ToTemplate())
 		if err != nil {
 			return nil, err
@@ -82,12 +89,5 @@ func Expand(task config.Task, params Params) ([]config.Task, error) {
 		t.Name = name
 		return []config.Task{t}, nil
 	}
-	if _, ok := task.Items.(string); ok {
-		items, err := task.CompiledItems.Run(params.ToExpr())
-		if err != nil {
-			return nil, err
-		}
-		return expandItems(task, items, params)
-	}
-	return expandItems(task, task.Items, params)
+	return expandItems(task, items, params)
 }
