@@ -21,6 +21,10 @@ buildflow provides the following features.
 * Define the dynamic tasks
 * etc
 
+## Blog written in Japanese
+
+https://techblog.szksh.cloud/tags/buildflow/
+
 ## Install
 
 Download from [GitHub Releases](https://github.com/suzuki-shunsuke/buildflow/releases)
@@ -28,6 +32,20 @@ Download from [GitHub Releases](https://github.com/suzuki-shunsuke/buildflow/rel
 ```
 $ buildflow --version
 buildflow version 0.1.0
+```
+
+## Examples
+
+Please see [examples](https://github.com/suzuki-shunsuke/buildflow/tree/master/examples).
+
+On the directory, there are some examples of configuration files.
+
+We can execute the build with them.
+
+For example,
+
+```
+$ buildflow run -c examples/hello_world.yaml
 ```
 
 ## Getting Started
@@ -547,20 +565,6 @@ phases:
     # If this is a tengo, the variable "result" should be defined and the type should be boolean.
     # By default `fail` is false if any tasks failed.
     fail: false
-```
-
-## Examples of Configuration files
-
-Please see [examples](https://github.com/suzuki-shunsuke/buildflow/tree/master/examples).
-
-On the directory, there are some examples of configuration files.
-
-We can execute the build with them.
-
-For example,
-
-```
-$ buildflow run -c examples/hello_world.yaml
 ```
 
 ### Configuration variables
