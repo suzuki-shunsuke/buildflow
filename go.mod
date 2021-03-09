@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/suzuki-shunsuke/go-ci-env v1.1.0
 	github.com/suzuki-shunsuke/go-convmap v0.1.0
-	github.com/suzuki-shunsuke/go-dataeq v1.0.1
+	github.com/suzuki-shunsuke/go-dataeq/v2/v2 v2.0.0
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
 	github.com/suzuki-shunsuke/go-findconfig v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
